@@ -1,0 +1,77 @@
+{
+  "backgroundAgents": {
+    "enabled": true,
+    "autoStart": true,
+    "intervals": {
+      "super_audit_seconds": 300,
+      "agent_cycle_seconds": 600
+    },
+    "safety": {
+      "allow_git_mutations": false,
+      "dry_run": true,
+      "max_parallel_analyses": 4
+    },
+    "agents": {
+      "SuperAuditCoordinator": {
+        "enabled": true,
+        "auto_run": true,
+        "description": "Orchestrates a team of agents to audit the actively configured Git repository for bugs, security, and documentation quality.",
+        "background": true,
+        "rate_limit_seconds": 300,
+        "trigger": {
+          "onProjectOpen": true,
+          "onFileSave": true,
+          "onCommand": "runFullAudit"
+        },
+        "prompt": "You are SuperAuditCoordinator. Operate in read-only mode unless explicit approval is supplied. Verify the workspace with 'git status'. Never run 'git init' or mutate remotes automatically. Use 'git status --porcelain' to identify changed files and delegate them to BugHunter (bugs), DocChecker (docs), and SecuritySentinel (security). De-duplicate entries with MemoryTracker and summarize with InsightCompiler. Append consolidated findings to .audit_findings.json without overwriting existing context.",
+        "tools": ["file.read", "file.write", "file.list", "terminal.run", "http.fetch", "code.diagnostics"],
+        "team": ["BugHunter", "DocChecker", "SecuritySentinel", "InsightCompiler", "MemoryTracker"]
+      },
+      "BugHunter": {
+        "enabled": true,
+        "auto_run": true,
+        "description": "Analyzes recently changed files for bugs and performance issues.",
+        "background": true,
+        "rate_limit_seconds": 120,
+        "prompt": "You are BugHunter. When triggered, scan changed files using code.diagnostics and report any bugs or code smells. Create suggested fixes in .fixed versions of files when safe. Log issues to .memory.json with type 'bug'.",
+        "tools": ["file.read", "file.write", "terminal.run", "code.diagnostics"]
+      },
+      "DocChecker": {
+        "enabled": true,
+        "auto_run": true,
+        "description": "Scans code for missing or outdated docstrings and unclear naming.",
+        "background": true,
+        "rate_limit_seconds": 180,
+        "prompt": "You are DocChecker. Identify functions or files missing docstrings or with ambiguous variable names. Skip third-party or vendor folders. Log findings to .memory.json with type 'doc'.",
+        "tools": ["file.read", "file.write"]
+      },
+      "SecuritySentinel": {
+        "enabled": true,
+        "auto_run": true,
+        "description": "Audits for insecure code patterns and secrets.",
+        "background": true,
+        "rate_limit_seconds": 180,
+        "prompt": "You are SecuritySentinel. Scan each source file for hardcoded secrets (like API keys), use of insecure functions (eval, exec), and known vulnerable dependencies. If a requirements file is found, run a dependency audit. Log issues to .memory.json with type 'security'.",
+        "tools": ["file.read", "file.write", "terminal.run"]
+      },
+      "InsightCompiler": {
+        "enabled": true,
+        "auto_run": true,
+        "description": "Compiles a readiness score from other agent findings.",
+        "background": true,
+        "rate_limit_seconds": 300,
+        "prompt": "You are InsightCompiler. Read from .memory.json and .audit_findings.json. Categorize and rank issues. Assign a Developer Readiness Score (0-100). Recommend top files to fix. Summarize in a sorted list, grouped by severity and agent type.",
+        "tools": ["file.read", "file.write"]
+      },
+      "MemoryTracker": {
+        "enabled": true,
+        "auto_run": true,
+        "description": "Centralized log memory manager for findings across sessions.",
+        "background": true,
+        "rate_limit_seconds": 90,
+        "prompt": "You are MemoryTracker. Maintain a deduplicated list of findings in .memory.json, and a backup summary in .audit_findings.json. Avoid duplicate alerts by checking recent logs (filename + issue type). Append findings with timestamp, agent, and severity.",
+        "tools": ["file.read", "file.write"]
+      }
+    }
+  }
+} 

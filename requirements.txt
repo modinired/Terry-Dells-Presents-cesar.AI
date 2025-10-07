@@ -1,0 +1,73 @@
+# Core dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+asyncio==3.4.3
+
+# Database and caching
+asyncpg==0.29.0
+redis==5.0.1
+sqlalchemy[asyncio]==2.0.23
+
+# AI and ML
+openai==1.50.0
+transformers==4.36.0
+torch>=2.0.0
+tesserocr>=2.0.0
+Pillow==10.4.0
+
+# Communication and networking
+aiohttp==3.9.1
+websockets==12.0
+httpx==0.25.2
+requests==2.31.0
+
+# Security and authentication
+cryptography==42.0.8
+PyJWT==2.8.0
+python-multipart==0.0.6
+
+# Google Cloud and external platforms
+google-auth==2.23.4
+google-auth-oauthlib==1.1.0
+google-auth-httplib2==0.1.1
+google-api-python-client==2.108.0
+
+# Monitoring and logging
+structlog==23.2.0
+prometheus-client==0.19.0
+
+# Development and testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+black==23.11.0
+isort==5.12.0
+
+# Screen recording and vision
+mss==9.0.1
+opencv-python==4.8.1.78
+numpy==1.26.4
+
+# UI-TARS and GUI automation dependencies
+pyautogui==0.9.54
+pynput==1.7.6
+selenium==4.15.2
+playwright==1.40.0
+
+# Atlas CESAR AI Final - Enhanced Memory System
+mem0ai>=0.1.0
+qdrant-client>=1.7.0
+sentence-transformers>=2.2.0
+
+# Task scheduling
+celery==5.3.4
+redis==5.0.1
+
+# Environment and configuration
+python-dotenv==1.0.0
+pydantic-settings==2.1.0
+
+# Vertex AI specific
+google-cloud-aiplatform==1.38.1
+google-cloud-storage==2.10.0
+google-cloud-logging==3.8.0 

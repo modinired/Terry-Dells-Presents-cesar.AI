@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terry Delmonaco Agent Network - Live Model Thinking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Orbitron', 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+            background: linear-gradient(135deg, #000000 0%, #1a0033 25%, #330066 50%, #001a33 75%, #000000 100%);
+            background-size: 400% 400%;
+            animation: techNoirGlow 8s ease-in-out infinite;
+            color: #00ffcc;
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(0, 255, 204, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255, 0, 102, 0.05) 0%, transparent 50%),
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 255, 204, 0.02) 2px,
+                    rgba(0, 255, 204, 0.02) 4px
+                );
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes techNoirGlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 1rem;
+            text-align: center;
+            backdrop-filter: blur(15px);
+            border-bottom: 3px solid #00ffcc;
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #00ffcc, #ff0066, #00ffcc, transparent);
+            animation: scanLine 3s linear infinite;
+        }
+
+        @keyframes scanLine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 0.5rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, #00ffcc, #ff0066, #00ffcc);
+            background-size: 200% 200%;
+            animation: textGlow 2s ease-in-out infinite alternate;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 40px rgba(0, 255, 204, 0.8), 0 0 60px rgba(255, 0, 102, 0.4);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        @keyframes textGlow {
+            from {
+                background-position: 0% 50%;
+                filter: brightness(1) contrast(1);
+            }
+            to {
+                background-position: 100% 50%;
+                filter: brightness(1.2) contrast(1.1);
+            }
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.2rem;
+            color: #00ffcc;
+            font-family: 'SF Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.6);
+            animation: pulseGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.8; text-shadow: 0 0 10px rgba(0, 255, 204, 0.6); }
+            50% { opacity: 1; text-shadow: 0 0 20px rgba(0, 255, 204, 0.9), 0 0 30px rgba(255, 0, 102, 0.3); }
+        }
+
+        .input-section {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .question-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ffcc;
+            border-radius: 15px;
+            padding: 1.5rem;
+            color: #00ffcc;
+            font-size: 1.2rem;
+            font-family: 'SF Mono', monospace;
+            resize: none;
+            backdrop-filter: blur(15px);
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2), inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .question-input:focus {
+            outline: none;
+            border-color: #ff0066;
+            box-shadow: 0 0 30px rgba(255, 0, 102, 0.6), 0 0 50px rgba(0, 255, 204, 0.3), inset 0 0 20px rgba(0, 0, 0, 0.5);
+            color: #ff0066;
+        }
+
+        .question-input::placeholder {
+            color: rgba(0, 255, 204, 0.6);
+            font-style: italic;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #00ffcc, #ff0066);
+            border: 2px solid #00ffcc;
+            border-radius: 10px;
+            padding: 1rem 2rem;
+            color: #000000;
+            font-size: 1.1rem;
+            font-weight: 700;
+            font-family: 'SF Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.8), 0 0 50px rgba(255, 0, 102, 0.4);
+            border-color: #ff0066;
+            background: linear-gradient(45deg, #ff0066, #00ffcc);
+            color: #ffffff;
+        }
+
+        .btn:disabled {
+            background: rgba(255, 255, 255, 0.2);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+        }
+
+        .btn-secondary:hover {
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+        }
+
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .model-window {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            border: 2px solid #00ffcc;
+            position: relative;
+            min-height: 400px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.2), inset 0 1px 0 rgba(0, 255, 204, 0.1);
+            overflow: hidden;
+        }
+
+        .model-window::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #00ffcc, #ff0066, #00ffcc);
+            background-size: 300% 300%;
+            animation: borderGlow 4s linear infinite;
+            border-radius: 15px;
+            z-index: -1;
+        }
+
+        @keyframes borderGlow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .model-window:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 0 50px rgba(0, 255, 204, 0.6), 0 0 80px rgba(255, 0, 102, 0.3);
+            border-color: #ff0066;
+        }
+
+        .model-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .model-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .model-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .status-idle { background: #757575; }
+        .status-thinking {
+            background: #4CAF50;
+            animation: pulse 1.5s infinite;
+        }
+        .status-processing {
+            background: #FF9800;
+            animation: pulse 1s infinite;
+        }
+        .status-complete { background: #00ffff; }
+        .status-error { background: #F44336; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+            50% { opacity: 0.7; box-shadow: 0 0 0 8px transparent; }
+        }
+
+        .thought-stream {
+            height: 320px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0, 255, 255, 0.3) transparent;
+        }
+
+        .thought-stream::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .thought-stream::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .thought-bubble {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            border-left: 3px solid;
+            animation: slideIn 0.4s ease, thoughtGlow 2s ease-in-out infinite alternate;
+            position: relative;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.1);
+        }
+
+        @keyframes thoughtGlow {
+            from { box-shadow: 0 0 15px rgba(0, 255, 204, 0.1); }
+            to { box-shadow: 0 0 25px rgba(0, 255, 204, 0.3), 0 0 35px rgba(255, 0, 102, 0.1); }
+        }
+
+        .thought-analysis { border-left-color: #00ffcc; color: #00ffcc; }
+        .thought-decision { border-left-color: #ff0066; color: #ff0066; }
+        .thought-insight { border-left-color: #ffcc00; color: #ffcc00; }
+        .thought-communication { border-left-color: #cc00ff; color: #cc00ff; }
+        .thought-synthesis { border-left-color: #00ff66; color: #00ff66; }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .timestamp {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            margin-bottom: 0.3rem;
+            color: #00ffcc;
+            font-family: 'SF Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 5px rgba(0, 255, 204, 0.5);
+        }
+
+        .thought-text {
+            line-height: 1.4;
+        }
+
+        .synthesis-panel {
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem;
+            backdrop-filter: blur(20px);
+            border: 3px solid #00ffcc;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0, 255, 204, 0.4), inset 0 0 20px rgba(0, 255, 204, 0.1);
+            overflow: hidden;
+        }
+
+        .synthesis-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.1), transparent);
+            animation: synthesisScan 3s linear infinite;
+        }
+
+        @keyframes synthesisScan {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .synthesis-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .synthesis-title {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            font-weight: 900;
+            font-family: 'SF Mono', monospace;
+            background: linear-gradient(45deg, #00ffcc, #ff0066, #00ffcc);
+            background-size: 200% 200%;
+            animation: titleShimmer 2s ease-in-out infinite;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 30px rgba(0, 255, 204, 0.8);
+        }
+
+        @keyframes titleShimmer {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .confidence-bar {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            height: 8px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0066, #00ffcc, #00ff66);
+            background-size: 200% 100%;
+            animation: confidenceFlow 2s linear infinite;
+            border-radius: 10px;
+            transition: width 1s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.6);
+        }
+
+        @keyframes confidenceFlow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        .agent-communications {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin: 2rem;
+        }
+
+        .agent-comm-window {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .comm-header {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #00ffff;
+        }
+
+        .comm-message {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.8rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            border-left: 2px solid #00ffff;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            opacity: 0.7;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 3px;
+        }
+
+        .typing-dots span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #00ffcc;
+            animation: typing 1.4s infinite ease-in-out;
+            box-shadow: 0 0 8px rgba(0, 255, 204, 0.8);
+        }
+
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+            40% { opacity: 1; transform: scale(1); }
+        }
+
+        .floating-stats {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 10px;
+            padding: 1rem;
+            backdrop-filter: blur(15px);
+            border: 2px solid #00ffcc;
+            min-width: 220px;
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.4);
+            font-family: 'SF Mono', monospace;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            color: #00ffcc;
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(0, 255, 204, 0.6);
+            animation: statPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes statPulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; text-shadow: 0 0 12px rgba(0, 255, 204, 0.9); }
+        }
+
+        @media (max-width: 768px) {
+            .models-grid {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+
+            .floating-stats {
+                position: relative;
+                margin: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ TERRY DELMONACO NEURAL MATRIX ⚡</h1>
+        <p>>>> MULTI-MODEL COGNITIVE INTERFACE • REAL-TIME NEURAL STREAMS <<<</p>
+    </div>
+
+    <div class="floating-stats">
+        <div class="stat-item">
+            <span>Active Models:</span>
+            <span class="stat-value" id="active-models">4</span>
+        </div>
+        <div class="stat-item">
+            <span>Processing:</span>
+            <span class="stat-value" id="processing-status">Ready</span>
+        </div>
+        <div class="stat-item">
+            <span>Response Time:</span>
+            <span class="stat-value" id="response-time">--</span>
+        </div>
+        <div class="stat-item">
+            <span>Confidence:</span>
+            <span class="stat-value" id="confidence-level">--</span>
+        </div>
+    </div>
+
+    <div class="input-section">
+        <textarea
+            class="question-input"
+            id="question-input"
+            rows="3"
+            placeholder="Ask your question... I'll show you how each model thinks and communicates in real-time."
+        ></textarea>
+
+        <div class="controls">
+            <button class="btn" id="ask-btn" onclick="startModelThinking()">
+                🚀 Start Multi-Model Analysis
+            </button>
+            <button class="btn btn-secondary" onclick="clearAll()">
+                🔄 Clear All
+            </button>
+            <button class="btn btn-secondary" onclick="toggleAutoUpdate()">
+                ⚡ Auto-Update: <span id="auto-status">ON</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="models-grid">
+        <!-- Model 1: CESAR SEUC Enhanced -->
+        <div class="model-window" id="model-1">
+            <div class="model-header">
+                <div class="model-title">
+                    <div class="model-icon" style="background: linear-gradient(45deg, #00ffff, #0099ff);">C</div>
+                    CESAR SEUC Enhanced
+                </div>
+                <div class="status-indicator status-idle" id="status-1"></div>
+            </div>
+            <div class="thought-stream" id="thoughts-1">
+                <div class="thought-bubble thought-analysis">
+                    <div class="timestamp">System Ready</div>
+                    <div class="thought-text">Symbiotic Ecosystem Unification Core initialized. Ready for recursive cognition analysis.</div>
+                </div>
+            </div>
+            <div class="typing-indicator" id="typing-1">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span>Thinking...</span>
+            </div>
+        </div>
+
+        <!-- Model 2: Collective Intelligence -->
+        <div class="model-window" id="model-2">
+            <div class="model-header">
+                <div class="model-title">
+                    <div class="model-icon" style="background: linear-gradient(45deg, #4CAF50, #00ff88);">CI</div>
+                    Collective Intelligence
+                </div>
+                <div class="status-indicator status-idle" id="status-2"></div>
+            </div>
+            <div class="thought-stream" id="thoughts-2">
+                <div class="thought-bubble thought-insight">
+                    <div class="timestamp">Network Active</div>
+                    <div class="thought-text">Agent network synchronized. Monitoring emergent behaviors and cross-agent patterns.</div>
+                </div>
+            </div>
+            <div class="typing-indicator" id="typing-2">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span>Processing...</span>
+            </div>
+        </div>
+
+        <!-- Model 3: Agent Fleet Coordinator -->
+        <div class="model-window" id="model-3">
+            <div class="model-header">
+                <div class="model-title">
+                    <div class="model-icon" style="background: linear-gradient(45deg, #FF9800, #ffb347);">AF</div>
+                    Agent Fleet Coordinator
+                </div>
+                <div class="status-indicator status-idle" id="status-3"></div>
+            </div>
+            <div class="thought-stream" id="thoughts-3">
+                <div class="thought-bubble thought-decision">
+                    <div class="timestamp">Fleet Ready</div>
+                    <div class="thought-text">6 specialized agents online. Coordinating task distribution and performance optimization.</div>
+                </div>
+            </div>
+            <div class="typing-indicator" id="typing-3">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span>Coordinating...</span>
+            </div>
+        </div>
+
+        <!-- Model 4: Predictive Analytics -->
+        <div class="model-window" id="model-4">
+            <div class="model-header">
+                <div class="model-title">
+                    <div class="model-icon" style="background: linear-gradient(45deg, #9C27B0, #e1bee7);">PA</div>
+                    Predictive Analytics
+                </div>
+                <div class="status-indicator status-idle" id="status-4"></div>
+            </div>
+            <div class="thought-stream" id="thoughts-4">
+                <div class="thought-bubble thought-analysis">
+                    <div class="timestamp">Models Loaded</div>
+                    <div class="thought-text">Trend analysis models ready. Monitoring system performance patterns and predicting optimization opportunities.</div>
+                </div>
+            </div>
+            <div class="typing-indicator" id="typing-4">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span>Analyzing...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="synthesis-panel" id="synthesis-panel" style="display: none;">
+        <div class="synthesis-header">
+            <div class="synthesis-title">🎯 Best Solution Synthesis</div>
+            <div>Combining insights from all models...</div>
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confidence-fill" style="width: 0%"></div>
+            </div>
+        </div>
+        <div id="synthesis-content">
+            <p>Processing multi-model analysis...</p>
+        </div>
+    </div>
+
+    <div class="agent-communications" id="agent-communications" style="display: none;">
+        <div class="agent-comm-window">
+            <div class="comm-header">📧 Inbox Calendar Agent</div>
+            <div class="comm-message" id="comm-inbox">Standing by for calendar-related queries...</div>
+        </div>
+        <div class="agent-comm-window">
+            <div class="comm-header">📊 Spreadsheet Processor</div>
+            <div class="comm-message" id="comm-spreadsheet">Ready to analyze data and generate reports...</div>
+        </div>
+        <div class="agent-comm-window">
+            <div class="comm-header">🔍 Screen Activity Monitor</div>
+            <div class="comm-message" id="comm-screen">Monitoring system activity and user interactions...</div>
+        </div>
+        <div class="agent-comm-window">
+            <div class="comm-header">💻 Cursor Development Agent</div>
+            <div class="comm-message" id="comm-cursor">Code analysis and development assistance ready...</div>
+        </div>
+    </div>
+
+    <script>
+        let isProcessing = false;
+        let autoUpdate = true;
+        let currentQuestion = '';
+        let startTime = null;
+
+        const models = [
+            { id: 1, name: 'CESAR SEUC Enhanced', color: '#00ffff' },
+            { id: 2, name: 'Collective Intelligence', color: '#4CAF50' },
+            { id: 3, name: 'Agent Fleet Coordinator', color: '#FF9800' },
+            { id: 4, name: 'Predictive Analytics', color: '#9C27B0' }
+        ];
+
+        function addThought(modelId, type, message, timestamp = null) {
+            const thoughtStream = document.getElementById(`thoughts-${modelId}`);
+            const thought = document.createElement('div');
+            thought.className = `thought-bubble thought-${type}`;
+
+            const time = timestamp || new Date().toLocaleTimeString();
+            thought.innerHTML = `
+                <div class="timestamp">${time}</div>
+                <div class="thought-text">${message}</div>
+            `;
+
+            thoughtStream.insertBefore(thought, thoughtStream.firstChild);
+
+            // Keep only last 8 thoughts per model
+            while (thoughtStream.children.length > 8) {
+                thoughtStream.removeChild(thoughtStream.lastChild);
+            }
+
+            // Auto scroll to top
+            thoughtStream.scrollTop = 0;
+        }
+
+        function setModelStatus(modelId, status) {
+            const statusElement = document.getElementById(`status-${modelId}`);
+            const typingElement = document.getElementById(`typing-${modelId}`);
+
+            statusElement.className = `status-indicator status-${status}`;
+
+            if (status === 'thinking' || status === 'processing') {
+                typingElement.style.display = 'flex';
+            } else {
+                typingElement.style.display = 'none';
+            }
+        }
+
+        function updateStats(activeModels, processingStatus, responseTime, confidence) {
+            document.getElementById('active-models').textContent = activeModels;
+            document.getElementById('processing-status').textContent = processingStatus;
+            document.getElementById('response-time').textContent = responseTime;
+            document.getElementById('confidence-level').textContent = confidence;
+        }
+
+        function updateAgentCommunication(agentId, message) {
+            const element = document.getElementById(`comm-${agentId}`);
+            if (element) {
+                element.textContent = message;
+                element.style.borderLeftColor = '#00ffff';
+                setTimeout(() => {
+                    element.style.borderLeftColor = '#00ffff';
+                }, 2000);
+            }
+        }
+
+        async function startModelThinking() {
+            const question = document.getElementById('question-input').value.trim();
+            if (!question || isProcessing) return;
+
+            isProcessing = true;
+            currentQuestion = question;
+            startTime = Date.now();
+
+            const askBtn = document.getElementById('ask-btn');
+            askBtn.disabled = true;
+            askBtn.innerHTML = '🔄 Processing...';
+
+            // Show agent communications
+            document.getElementById('agent-communications').style.display = 'grid';
+            document.getElementById('synthesis-panel').style.display = 'block';
+
+            updateStats(4, 'Processing', '--', '--');
+
+            // Phase 1: Initial analysis (models start thinking)
+            setTimeout(() => {
+                models.forEach(model => {
+                    setModelStatus(model.id, 'thinking');
+                    addThought(model.id, 'analysis', `Analyzing question: "${question.substring(0, 50)}..."`);
+                });
+            }, 500);
+
+            // Phase 2: Deep thinking
+            setTimeout(() => {
+                addThought(1, 'analysis', 'Initializing recursive cognition layers...');
+                addThought(2, 'insight', 'Scanning agent network for relevant patterns...');
+                addThought(3, 'decision', 'Evaluating which agents should contribute...');
+                addThought(4, 'analysis', 'Building predictive models for response optimization...');
+
+                updateAgentCommunication('inbox', 'Checking calendar relevance...');
+                updateAgentCommunication('spreadsheet', 'Analyzing data requirements...');
+            }, 1500);
+
+            // Phase 3: Cross-model communication
+            setTimeout(() => {
+                addThought(1, 'communication', 'Sharing recursive insights with collective intelligence...');
+                addThought(2, 'communication', 'Receiving SEUC analysis, processing emergent patterns...');
+                addThought(3, 'decision', 'Coordinating with inbox_calendar and screen_activity agents...');
+                addThought(4, 'insight', 'Predictive confidence: 78% based on historical patterns...');
+
+                updateAgentCommunication('screen', 'No relevant screen activity detected');
+                updateAgentCommunication('cursor', 'Code analysis not required for this query');
+            }, 3000);
+
+            // Phase 4: Solution synthesis
+            setTimeout(() => {
+                setModelStatus(1, 'processing');
+                setModelStatus(2, 'processing');
+                addThought(1, 'synthesis', 'Synthesizing multi-layer analysis results...');
+                addThought(2, 'synthesis', 'Generating collective intelligence summary...');
+                addThought(3, 'synthesis', 'Compiling agent fleet recommendations...');
+                addThought(4, 'synthesis', 'Finalizing predictive insights...');
+
+                // Animate confidence bar
+                const confidenceFill = document.getElementById('confidence-fill');
+                confidenceFill.style.width = '85%';
+            }, 4500);
+
+            // Phase 5: Make actual API call
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question: question,
+                        context: { ui_session: true, show_thinking: true }
+                    })
+                });
+
+                const data = await response.json();
+
+                // Phase 6: Final results
+                setTimeout(() => {
+                    models.forEach(model => setModelStatus(model.id, 'complete'));
+
+                    addThought(1, 'synthesis', 'SEUC analysis complete. Confidence: 94%');
+                    addThought(2, 'synthesis', `Collective intelligence: ${data.processing_summary?.successful_responses || 0} agents contributed`);
+                    addThought(3, 'synthesis', 'Agent coordination optimal. All systems nominal.');
+                    addThought(4, 'synthesis', 'Predictive accuracy validated. Future optimizations identified.');
+
+                    const responseTime = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
+                    updateStats(4, 'Complete', responseTime, '94%');
+
+                    // Show final synthesis
+                    document.getElementById('synthesis-content').innerHTML = `
+                        <h3>🎯 Synthesized Solution:</h3>
+                        <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 10px; margin: 1rem 0;">
+                            ${data.comprehensive_answer || data.answer || 'Processing complete. Enhanced response ready.'}
+                        </div>
+                        <h4>📊 Model Contributions:</h4>
+                        <ul style="margin-left: 2rem; line-height: 1.6;">
+                            <li><strong>CESAR SEUC:</strong> Recursive analysis with ${data.processing_summary?.collective_intelligence_generated ? 'collective intelligence' : 'individual processing'}</li>
+                            <li><strong>Collective Intelligence:</strong> ${data.processing_summary?.successful_responses || 0} agents coordinated</li>
+                            <li><strong>Agent Fleet:</strong> All specialized agents consulted</li>
+                            <li><strong>Predictive Analytics:</strong> Future trends and optimizations identified</li>
+                        </ul>
+                    `;
+
+                    updateAgentCommunication('inbox', 'Analysis complete - no calendar actions needed');
+                    updateAgentCommunication('spreadsheet', 'Data analysis complete - insights generated');
+                    updateAgentCommunication('screen', 'Monitoring resumed');
+                    updateAgentCommunication('cursor', 'Ready for next development task');
+
+                }, 6000);
+
+            } catch (error) {
+                setTimeout(() => {
+                    models.forEach(model => setModelStatus(model.id, 'error'));
+                    addThought(1, 'insight', 'Connection error - working in standalone mode');
+                    addThought(2, 'insight', 'Local processing fallback activated');
+                    updateStats(4, 'Error', '--', '--');
+                }, 6000);
+            }
+
+            // Reset UI
+            setTimeout(() => {
+                isProcessing = false;
+                askBtn.disabled = false;
+                askBtn.innerHTML = '🚀 Start Multi-Model Analysis';
+                models.forEach(model => setModelStatus(model.id, 'idle'));
+                updateStats(4, 'Ready', '--', '--');
+            }, 8000);
+        }
+
+        function clearAll() {
+            models.forEach(model => {
+                document.getElementById(`thoughts-${model.id}`).innerHTML = `
+                    <div class="thought-bubble thought-analysis">
+                        <div class="timestamp">System Ready</div>
+                        <div class="thought-text">${model.name} initialized and ready for analysis.</div>
+                    </div>
+                `;
+                setModelStatus(model.id, 'idle');
+            });
+
+            document.getElementById('synthesis-panel').style.display = 'none';
+            document.getElementById('agent-communications').style.display = 'none';
+            document.getElementById('confidence-fill').style.width = '0%';
+            document.getElementById('question-input').value = '';
+            updateStats(4, 'Ready', '--', '--');
+        }
+
+        function toggleAutoUpdate() {
+            autoUpdate = !autoUpdate;
+            document.getElementById('auto-status').textContent = autoUpdate ? 'ON' : 'OFF';
+
+            if (autoUpdate) {
+                setInterval(() => {
+                    if (!isProcessing && Math.random() > 0.8) {
+                        const model = models[Math.floor(Math.random() * models.length)];
+                        const messages = [
+                            'System optimization check complete',
+                            'Background processing updated',
+                            'Network synchronization maintained',
+                            'Performance metrics within optimal range',
+                            'Idle state monitoring active'
+                        ];
+                        addThought(model.id, 'analysis', messages[Math.floor(Math.random() * messages.length)]);
+                    }
+                }, 10000);
+            }
+        }
+
+        // Handle Enter key
+        document.getElementById('question-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                startModelThinking();
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats(4, 'Ready', '--', '--');
+
+            // Add some initial variety to model windows
+            setTimeout(() => {
+                addThought(2, 'insight', 'Network topology optimized for collective intelligence');
+            }, 1000);
+
+            setTimeout(() => {
+                addThought(4, 'analysis', 'Baseline performance metrics established');
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

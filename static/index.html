@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terry Delmonaco Agent Network - Real-Time Thinking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-main: #f8f1e6;
+            --bg-overlay: radial-gradient(circle at top left, rgba(255, 240, 220, 0.9), rgba(230, 216, 196, 0.6));
+            --bg-overlay-secondary: linear-gradient(140deg, rgba(255, 255, 255, 0.7) 0%, rgba(235, 222, 204, 0.4) 45%, rgba(210, 198, 182, 0.35) 100%);
+            --text-primary: #111111;
+            --text-secondary: rgba(17, 17, 17, 0.65);
+            --panel-bg: rgba(255, 255, 255, 0.75);
+            --panel-border: rgba(0, 0, 0, 0.06);
+            --panel-shadow: 0 24px 40px rgba(15, 15, 15, 0.08);
+            --panel-hover-shadow: 0 32px 55px rgba(20, 20, 20, 0.12);
+            --input-bg: rgba(255, 255, 255, 0.82);
+            --input-border: rgba(17, 17, 17, 0.08);
+            --input-placeholder: rgba(17, 17, 17, 0.45);
+            --assistant-output-bg: rgba(255, 255, 255, 0.65);
+            --response-bg: rgba(0, 0, 0, 0.06);
+            --subtle-bg: rgba(17, 17, 17, 0.06);
+            --subtle-bg-hover: rgba(17, 17, 17, 0.12);
+            --accent-primary: #1f7fe7;
+            --accent-secondary: #54d6c7;
+            --accent-text: #0f0f0f;
+            --status-ready: #4fb783;
+            --status-warn: #d16a5d;
+            --status-wait: #f0a35a;
+        }
+
+        body[data-theme="dark"] {
+            --bg-main: #0e1018;
+            --bg-overlay: radial-gradient(circle at top left, rgba(18, 28, 46, 0.9), rgba(8, 15, 28, 0.6));
+            --bg-overlay-secondary: linear-gradient(140deg, rgba(10, 14, 24, 0.86) 0%, rgba(8, 20, 34, 0.78) 45%, rgba(14, 26, 40, 0.7) 100%);
+            --text-primary: #f5f7fb;
+            --text-secondary: rgba(245, 247, 251, 0.7);
+            --panel-bg: rgba(18, 24, 36, 0.88);
+            --panel-border: rgba(255, 255, 255, 0.06);
+            --panel-shadow: 0 24px 40px rgba(0, 0, 0, 0.35);
+            --panel-hover-shadow: 0 32px 55px rgba(0, 0, 0, 0.45);
+            --input-bg: rgba(18, 24, 36, 0.95);
+            --input-border: rgba(255, 255, 255, 0.12);
+            --input-placeholder: rgba(245, 247, 251, 0.35);
+            --assistant-output-bg: rgba(18, 24, 36, 0.95);
+            --response-bg: rgba(9, 14, 24, 0.75);
+            --subtle-bg: rgba(255, 255, 255, 0.08);
+            --subtle-bg-hover: rgba(255, 255, 255, 0.18);
+            --accent-primary: #60a6ff;
+            --accent-secondary: #56e4c9;
+            --accent-text: #041022;
+            --status-ready: #6ce6a5;
+            --status-warn: #ff937d;
+            --status-wait: #ffd27a;
+        }
+
+
+        body {
+            font-family: 'Calibri', 'Segoe UI', sans-serif;
+            color: var(--text-primary);
+            background: var(--bg-main);
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: var(--bg-overlay),
+                        url('/static/images/dashboard-photo.png') center/cover no-repeat;
+            z-index: -2;
+            filter: saturate(0.75) brightness(1.05);
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background: var(--bg-overlay-secondary);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.6);
+            padding: 1rem;
+            backdrop-filter: blur(22px) saturate(120%);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1.25rem;
+            color: var(--text-primary);
+        }
+
+        .header h1 {
+            font-size: 2.1rem;
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.03em;
+            text-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+        }
+
+        .header p {
+            opacity: 0.78; color: var(--text-secondary);
+            font-size: 1.08rem;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: repeat(3, minmax(0, 1fr));
+            gap: 1rem;
+            padding: 1.25rem;
+            height: calc(100vh - 140px);
+        }
+
+        .thinking-panel {
+            background: var(--panel-bg);
+            border-radius: 18px;
+            padding: 1.6rem;
+            backdrop-filter: blur(26px) saturate(140%);
+            border: 1px solid var(--panel-border);
+            box-shadow: var(--panel-shadow);
+            overflow: hidden;
+            position: relative;
+            transition: all 0.35s ease;
+        }
+
+        .thinking-panel:hover {
+            transform: translateY(-3px) scale(1.01);
+            box-shadow: var(--panel-hover-shadow);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.1rem;
+            padding-bottom: 0.6rem;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .panel-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-thinking {
+            background: #4CAF50;
+        }
+
+        .status-processing {
+            background: #FF9800;
+        }
+
+        .status-idle {
+            background: #757575;
+        }
+
+        .status-error {
+            background: #F44336;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .thinking-content {
+            height: calc(100% - 60px);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(17, 17, 17, 0.28) transparent;
+        }
+
+        .thinking-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .thinking-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .thinking-content::-webkit-scrollbar-thumb {
+            background: var(--subtle-bg-hover);
+            border-radius: 3px;
+        }
+
+        .thought-stream {
+            margin-bottom: 1rem;
+        }
+
+        .thought-item {
+            background: var(--panel-bg);
+            padding: 0.8rem;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid;
+            animation: slideIn 0.3s ease;
+        }
+
+        .thought-analysis {
+            border-left-color: var(--accent-primary);
+        }
+
+        .thought-decision {
+            border-left-color: var(--status-ready);
+        }
+
+        .thought-insight {
+            border-left-color: var(--status-wait);
+        }
+
+        .thought-warning {
+            border-left-color: var(--status-warn);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .timestamp {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-bottom: 0.3rem;
+        }
+
+        .question-panel {
+            grid-column: 1;
+            grid-row: 1 / span 2;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .question-input {
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            padding: 1rem;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            resize: none;
+            height: 120px;
+            margin-bottom: 1rem;
+        }
+
+        .terry-input {
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            padding: 0.9rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            resize: vertical;
+            height: 110px;
+            margin-bottom: 0.75rem;
+        }
+
+        .terry-panel .assistant-output {
+            background: var(--assistant-output-bg);
+            border-radius: 10px;
+            padding: 0.85rem;
+            min-height: 120px;
+            border: 1px solid var(--input-border);
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .terry-panel .assistant-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            opacity: 0.75;
+            margin-top: 0.5rem;
+        }
+
+        .terry-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+
+        .ask-button.subtle {
+            background: var(--subtle-bg);
+            color: var(--text-primary);
+        }
+
+        .ask-button.subtle:hover {
+            background: var(--subtle-bg-hover);
+        }
+
+        .question-input::placeholder {
+            color: var(--input-placeholder);
+        }
+
+        .ask-button {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border: none;
+            border-radius: 10px;
+            padding: 1rem 2rem;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1.5rem;
+        }
+
+        .ask-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(31, 127, 231, 0.25);
+        }
+
+        .ask-button:disabled {
+            background: rgba(0, 0, 0, 0.08);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .response-area {
+            flex: 1;
+            background: var(--response-bg);
+            border-radius: 10px;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+
+        .agent-panel {
+            grid-column: 2;
+        }
+
+        .loading-dots {
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .loading-dots span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: loading 1.4s infinite ease-in-out;
+        }
+
+        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes loading {
+            0%, 80%, 100% { opacity: 0.3; }
+            40% { opacity: 1; }
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .metric-item {
+            background: var(--panel-bg);
+            padding: 0.8rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.2rem;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .insight-highlight {
+            background: linear-gradient(90deg, rgba(255, 193, 7, 0.2), transparent);
+            border-left: 3px solid #FFC107;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .header-main {
+            flex: 1;
+            min-width: 240px;
+            text-align: left;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.1rem;
+            border-radius: 999px;
+            border: 1px solid var(--panel-border);
+            background: rgba(255, 255, 255, 0.65);
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 12px 30px rgba(15, 15, 15, 0.08);
+        }
+
+        body[data-theme="dark"] .theme-toggle {
+            background: rgba(18, 24, 36, 0.95);
+            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 34px rgba(15, 15, 15, 0.12);
+        }
+
+        .theme-toggle .toggle-icon {
+            font-size: 1.1rem;
+        }
+
+        .theme-toggle .toggle-label {
+            font-size: 0.95rem;
+        }
+
+        body[data-theme="dark"] .header {
+            background: rgba(12, 20, 36, 0.82);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .response-area.processing {
+            position: relative;
+            box-shadow: 0 0 0 2px rgba(31, 127, 231, 0.35), inset 0 0 18px rgba(84, 214, 199, 0.25);
+            animation: pulseGlow 1.6s ease-in-out infinite;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 0 2px rgba(31, 127, 231, 0.25), inset 0 0 14px rgba(84, 214, 199, 0.18); }
+            50% { box-shadow: 0 0 0 4px rgba(31, 127, 231, 0.4), inset 0 0 24px rgba(84, 214, 199, 0.35); }
+        }
+
+        .metric-item {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-spark {
+            position: relative;
+            height: 36px;
+            margin: 0.5rem 0;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        body[data-theme="dark"] .metric-spark {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .metric-spark::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(31, 127, 231, 0.35), rgba(84, 214, 199, 0.35));
+            transform-origin: left center;
+            transform: scaleX(0.3);
+            transition: transform 0.6s ease;
+        }
+
+        .metric-item[data-level] .metric-spark::after {
+            transform: scaleX(var(--spark-level, 0.3));
+        }
+
+        .floating-quick-actions {
+            position: fixed;
+            bottom: 20px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            z-index: 20;
+        }
+
+        .quick-action-btn {
+            padding: 0.75rem 1.1rem;
+            border-radius: 14px;
+            border: 1px solid var(--panel-border);
+            background: rgba(255, 255, 255, 0.85);
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 16px 28px rgba(15, 15, 15, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        body[data-theme="dark"] .quick-action-btn {
+            background: rgba(18, 24, 36, 0.95);
+            box-shadow: 0 18px 35px rgba(0, 0, 0, 0.45);
+        }
+
+        .quick-action-btn:hover {
+            transform: translateY(-2px) scale(1.01);
+        }
+
+        .quick-action-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .llm-dialogue-panel {
+            grid-column: 1 / span 2;
+        }
+
+        .llm-dialogue {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .llm-track {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 14px;
+            padding: 1rem;
+            border: 1px solid var(--panel-border);
+            backdrop-filter: blur(12px);
+        }
+
+        body[data-theme="dark"] .llm-track {
+            background: rgba(18, 24, 36, 0.75);
+        }
+
+        .llm-track h4 {
+            margin-bottom: 0.6rem;
+            font-size: 1rem;
+            letter-spacing: 0.02em;
+        }
+
+        .llm-stream {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .llm-bubble {
+            padding: 0.75rem 0.9rem;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+            font-size: 0.95rem;
+            line-height: 1.45;
+        }
+
+        body[data-theme="dark"] .llm-bubble {
+            background: rgba(18, 24, 36, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .llm-bubble.primary {
+            border-left: 4px solid var(--accent-primary);
+        }
+
+        .llm-bubble.secondary {
+            border-left: 4px solid var(--accent-secondary);
+        }
+
+        .status-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+
+        .status-card {
+            padding: 0.85rem;
+            border-radius: 12px;
+            border: 1px solid var(--panel-border);
+            background: rgba(255, 255, 255, 0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        body[data-theme="dark"] .status-card {
+            background: rgba(18, 24, 36, 0.8);
+        }
+
+        .status-card span {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 960px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            .llm-dialogue-panel {
+                grid-column: 1;
+            }
+            .floating-quick-actions {
+                right: 16px;
+                bottom: 16px;
+                flex-direction: row;
+            }
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="header">
+        <div class="header-main">
+            <h1>🤖 CESAR.ai Enterprise Agent Network</h1>
+            <p>25+ Enterprise Agents • Real-Time Intelligence • Collective Processing • SEUC Framework</p>
+        </div>
+        <div class="header-actions">
+            <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+                <span class="toggle-icon">🌞</span>
+                <span class="toggle-label">Light</span>
+            </button>
+            <div class="status-summary">
+                <div class="status-card">
+                    <strong id="summary-manager">--</strong>
+                    <span>Manager</span>
+                </div>
+                <div class="status-card">
+                    <strong id="summary-background">--</strong>
+                    <span>Background</span>
+                </div>
+                <div class="status-card">
+                    <strong id="summary-terry">--</strong>
+                    <span>Terry Bridge</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Main Question & Response Panel -->
+        <div class="thinking-panel question-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    💬 Ask the Agent Network
+                </div>
+                <div class="status-indicator status-idle" id="main-status"></div>
+            </div>
+            <div class="thinking-content">
+                <textarea
+                    class="question-input"
+                    id="question-input"
+                    placeholder="Ask me anything... I'll route your question through all agent nodes for comprehensive analysis."
+                ></textarea>
+                <button class="ask-button" id="ask-button" onclick="askQuestion()">
+                    🚀 Ask All Agents
+                </button>
+                <div class="response-area" id="response-area">
+                    <p style="opacity: 0.75; text-align: center; margin-top: 2rem;">
+                        💡 Ready to process your questions through the entire agent network...
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Processing Panel -->
+        <div class="thinking-panel agent-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    ⚡ Agent Processing
+                </div>
+                <div class="status-indicator status-idle" id="agent-status"></div>
+            </div>
+            <div class="thinking-content">
+                <div class="thought-stream" id="agent-thoughts">
+                    <div class="thought-item thought-analysis">
+                        <div class="timestamp">System Ready</div>
+                        <div>25+ enterprise agents initialized and standing by</div>
+                    </div>
+                </div>
+                <div class="metric-grid">
+                    <div class="metric-item" data-level="0.3">
+                        <div class="metric-value" id="active-agents"></div>
+                        <div class="metric-spark" id="spark-active-agents"></div>
+                        <div class="metric-label">Active Agents</div>
+                    </div>
+                    <div class="metric-item" data-level="0.3">
+                        <div class="metric-value" id="response-time">--</div>
+                        <div class="metric-spark" id="spark-response-time"></div>
+                        <div class="metric-label">Avg Response (ms)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Collective Intelligence Panel -->
+        <div class="thinking-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    🧠 Collective Intelligence
+                </div>
+                <div class="status-indicator status-idle" id="ci-status"></div>
+            </div>
+            <div class="thinking-content">
+                <div class="thought-stream" id="ci-thoughts">
+                    <div class="thought-item thought-insight">
+                        <div class="timestamp">Network Status</div>
+                        <div>Collective intelligence framework active</div>
+                    </div>
+                </div>
+                <div class="metric-grid">
+                    <div class="metric-item" data-level="0.3">
+                        <div class="metric-value" id="insights-generated"></div>
+                        <div class="metric-spark" id="spark-insights"></div>
+                        <div class="metric-label">Insights</div>
+                    </div>
+                    <div class="metric-item" data-level="0.3">
+                        <div class="metric-value" id="emergent-behaviors"></div>
+                        <div class="metric-spark" id="spark-emergent"></div>
+                        <div class="metric-label">Emergent</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terry Assistant Panel -->
+        <div class="thinking-panel terry-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    🧑‍💻 Terry Delmonaco Assistant
+                </div>
+                <div class="status-indicator status-idle" id="terry-status"></div>
+            </div>
+            <div class="thinking-content">
+                <textarea
+                    class="terry-input"
+                    id="terry-input"
+                    placeholder="Ask Terry for local automations, coding nudges, or workstation tweaks..."
+                ></textarea>
+                <input type="text" id="terry-recurrence" class="question-input" style="margin-top:0; height:auto;" placeholder="Recurrence (e.g., daily at 9am, every Monday, RRULE:...)" />
+                <div class="terry-actions">
+                    <button class="ask-button" onclick="askTerry()">Ask Terry</button>
+                    <button class="ask-button subtle" onclick="createTerryTask()">Log Task</button>
+                </div>
+                <div class="assistant-meta" id="terry-status-text">Awaiting request.</div>
+                <div class="assistant-output" id="terry-response">Terry is standing by.</div>
+            </div>
+        </div>
+
+        <!-- System Monitoring Panel -->
+        <div class="thinking-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    📊 System Monitor
+                </div>
+                <div class="status-indicator status-thinking" id="system-status"></div>
+            </div>
+            <div class="thinking-content">
+                <div class="thought-stream" id="system-thoughts">
+                    <div class="thought-item thought-analysis">
+                        <div class="timestamp">System Health</div>
+                        <div>All systems operational</div>
+                    </div>
+                </div>
+                <div class="metric-grid">
+                    <div class="metric-item" data-level="0.3">
+                        <div class="metric-value" id="success-rate"></div>
+                        <div class="metric-spark" id="spark-success-rate"></div>
+                        <div class="metric-label">Success Rate</div>
+                    </div>
+                    <div class="metric-item" data-level="0.3">
+                        <div class="metric-value" id="tasks-completed"></div>
+                        <div class="metric-spark" id="spark-tasks-completed"></div>
+                        <div class="metric-label">Tasks Done</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dual LLM Collaboration Panel -->
+        <div class="thinking-panel llm-dialogue-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    🤝 Dual LLM Collaboration
+                </div>
+                <div class="status-indicator status-idle" id="llm-status"></div>
+            </div>
+            <div class="thinking-content">
+                <div class="llm-dialogue" id="llm-dialogue">
+                    <div class="llm-track">
+                        <h4>Primary Orchestrator</h4>
+                        <div class="llm-stream" id="llm-primary-stream">
+                            <div class="llm-bubble primary">Awaiting orchestrator insight…</div>
+                        </div>
+                    </div>
+                    <div class="llm-track">
+                        <h4>Specialist Reasoner</h4>
+                        <div class="llm-stream" id="llm-secondary-stream">
+                            <div class="llm-bubble secondary">Awaiting specialist response…</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="floating-quick-actions">
+        <button class="quick-action-btn" data-action="status">🔄 Refresh Status</button>
+        <button class="quick-action-btn" data-action="health">🛡️ Health Check</button>
+        <button class="quick-action-btn" data-action="metrics">📈 Live Metrics</button>
+    </div>
+
+    
+<script>
+    const STATUS_CLASSES = ["status-idle", "status-thinking", "status-processing", "status-error"];
+    const THEME_STORAGE_KEY = 'cesar-ui-theme';
+    const MAX_HISTORY_POINTS = 24;
+
+    const METRIC_SPARK_CONFIG = {
+        'active-agents': { sparkId: 'spark-active-agents', min: 0, max: 64 },
+        'response-time': { sparkId: 'spark-response-time', min: 0, max: 2500 },
+        'insights-generated': { sparkId: 'spark-insights', min: 0, max: 48 },
+        'emergent-behaviors': { sparkId: 'spark-emergent', min: 0, max: 32 },
+        'success-rate': { sparkId: 'spark-success-rate', min: 0, max: 100 },
+        'tasks-completed': { sparkId: 'spark-tasks-completed', min: 0, max: 400 }
+    };
+
+    const metricHistory = Object.keys(METRIC_SPARK_CONFIG).reduce((acc, key) => {
+        acc[key] = [];
+        return acc;
+    }, {});
+
+    let isProcessing = false;
+    let agentCount = 25;
+    let tasksCompleted = 0;
+    let ws = null;
+
+    function updateStatusIndicator(elementId, state) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        STATUS_CLASSES.forEach(cls => el.classList.remove(cls));
+        el.classList.add(`status-${state}`);
+    }
+
+    function setStatus(elementId, status) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+        element.className = `status-indicator status-${status}`;
+    }
+
+    function parseNumeric(value) {
+        if (typeof value === 'number') {
+            return value;
+        }
+        if (typeof value === 'string') {
+            const cleaned = value.replace(/,/g, '');
+            const match = cleaned.match(/-?\d+(\.\d+)?/);
+            return match ? Number(match[0]) : Number.NaN;
+        }
+        return Number.NaN;
+    }
+
+    function renderSparkline(sparkId, history, config) {
+        const spark = document.getElementById(sparkId);
+        if (!spark) {
+            return;
+        }
+
+        const recent = history.slice(-MAX_HISTORY_POINTS);
+        const parent = spark.closest('.metric-item');
+
+        if (!recent.length) {
+            spark.innerHTML = '';
+            if (parent) {
+                parent.style.removeProperty('--spark-level');
+                parent.removeAttribute('data-level');
+            }
+            return;
+        }
+
+        const width = 100;
+        const height = 36;
+        const gradientId = `${sparkId}-gradient`;
+        const step = recent.length > 1 ? width / (recent.length - 1) : width;
+        const range = Math.max(config.max - config.min, 1);
+
+        const points = recent.map((val, index) => {
+            const clamped = Math.min(config.max, Math.max(config.min, val));
+            const x = index * step;
+            const y = height - ((clamped - config.min) / range) * (height - 6) - 3;
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ');
+
+        spark.innerHTML = `
+            <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+                <defs>
+                    <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="var(--accent-primary)" />
+                        <stop offset="100%" stop-color="var(--accent-secondary)" />
+                    </linearGradient>
+                </defs>
+                <polyline points="${points}" fill="none" stroke="url(#${gradientId})" stroke-width="2.5" stroke-linecap="round" />
+            </svg>
+        `;
+
+        const lastValue = recent[recent.length - 1];
+        const level = Math.min(0.95, Math.max(0.05, (lastValue - config.min) / range));
+        if (parent) {
+            parent.style.setProperty('--spark-level', level.toFixed(3));
+            parent.setAttribute('data-level', level.toFixed(2));
+        }
+    }
+
+    function updateMetric(elementId, value) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        el.textContent = value;
+
+        const config = METRIC_SPARK_CONFIG[elementId];
+        if (config) {
+            const numericValue = parseNumeric(value);
+            if (!Number.isNaN(numericValue)) {
+                metricHistory[elementId].push(numericValue);
+                if (metricHistory[elementId].length > MAX_HISTORY_POINTS) {
+                    metricHistory[elementId].shift();
+                }
+                renderSparkline(config.sparkId, metricHistory[elementId], config);
+            }
+        }
+    }
+
+    function addThought(panelId, type, message, timestamp = null) {
+        const thoughtStream = document.getElementById(panelId);
+        if (!thoughtStream) return;
+        const thought = document.createElement('div');
+        thought.className = `thought-item thought-${type}`;
+
+        const time = timestamp || new Date().toLocaleTimeString();
+        thought.innerHTML = `
+            <div class="timestamp">${time}</div>
+            <div>${message}</div>
+        `;
+
+        thoughtStream.insertBefore(thought, thoughtStream.firstChild);
+
+        while (thoughtStream.children.length > 10) {
+            thoughtStream.removeChild(thoughtStream.lastChild);
+        }
+    }
+
+    function renderAgentContributions(contributions) {
+        const container = document.getElementById('agent-contributions');
+        if (!container) return;
+        if (!Array.isArray(contributions) || !contributions.length) {
+            container.innerHTML = '<div class="llm-bubble secondary">No individual agent summaries returned.</div>';
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        contributions.slice(0, 6).forEach(entry => {
+            const card = document.createElement('div');
+            card.className = 'llm-bubble secondary';
+            const agentName = entry.agent || entry.name || entry.role || 'Agent';
+            const detail = entry.summary || entry.output || entry.message || JSON.stringify(entry, null, 2);
+            card.innerHTML = `<strong>${agentName}</strong><br>${detail}`;
+            fragment.appendChild(card);
+        });
+
+        container.innerHTML = '';
+        container.appendChild(fragment);
+    }
+
+    function extractLLMInteractions(data) {
+        const interactions = { primary: [], secondary: [] };
+        if (!data) {
+            return interactions;
+        }
+
+        const dialogue = data.llm_interactions || data.llm_dialogue || data.result?.llm_interactions || data.result?.llm_dialogue;
+        if (Array.isArray(dialogue)) {
+            dialogue.forEach(entry => {
+                const role = (entry.role || entry.speaker || entry.agent || '').toLowerCase();
+                const content = entry.content || entry.message || entry.text || entry.response || entry.summary;
+                if (!content) return;
+                if (role.includes('secondary') || role.includes('specialist') || role.includes('support')) {
+                    interactions.secondary.push(content);
+                } else {
+                    interactions.primary.push(content);
+                }
+            });
+        }
+
+        if (!interactions.primary.length) {
+            const primaryFallback = data.comprehensive_answer || data.primary_answer || data.result?.summary || data.result?.answer;
+            if (primaryFallback) {
+                interactions.primary.push(primaryFallback);
+            }
+        }
+
+        if (!interactions.secondary.length) {
+            const agentContribs = data.agent_contributions || data.result?.agent_contributions;
+            if (Array.isArray(agentContribs) && agentContribs.length) {
+                agentContribs.slice(0, 4).forEach(entry => {
+                    const name = entry.agent || entry.name || 'Agent';
+                    const detail = entry.summary || entry.detail || entry.output || entry.message;
+                    if (detail) {
+                        interactions.secondary.push(`${name}: ${detail}`);
+                    }
+                });
+            } else if (data.processing_summary?.notes) {
+                interactions.secondary.push(data.processing_summary.notes);
+            }
+        }
+
+        return interactions;
+    }
+
+    function renderLLMStream(container, messages, variant, fallback) {
+        if (!container) return;
+        container.innerHTML = '';
+        if (!messages.length) {
+            const bubble = document.createElement('div');
+            bubble.className = `llm-bubble ${variant}`;
+            bubble.textContent = fallback;
+            container.appendChild(bubble);
+            return;
+        }
+
+        messages.slice(-6).forEach(message => {
+            const bubble = document.createElement('div');
+            bubble.className = `llm-bubble ${variant}`;
+            bubble.textContent = typeof message === 'string' ? message : JSON.stringify(message);
+            container.appendChild(bubble);
+        });
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function renderLLMDialogue(data) {
+        const interactions = extractLLMInteractions(data);
+        renderLLMStream(document.getElementById('llm-primary-stream'), interactions.primary, 'primary', 'Awaiting orchestrator insight…');
+        renderLLMStream(document.getElementById('llm-secondary-stream'), interactions.secondary, 'secondary', 'Awaiting specialist response…');
+        setStatus('llm-status', interactions.primary.length || interactions.secondary.length ? 'thinking' : 'idle');
+    }
+
+    function handleMetricPayload(payload) {
+        if (!payload || !payload.data) return;
+        const data = payload.data;
+
+        if (data.overall_metrics) {
+            if (typeof data.overall_metrics.active_agents === 'number') {
+                updateMetric('active-agents', data.overall_metrics.active_agents);
+            }
+            if (typeof data.overall_metrics.average_response_time_ms === 'number') {
+                updateMetric('response-time', Math.round(data.overall_metrics.average_response_time_ms));
+            }
+            if (typeof data.overall_metrics.success_rate === 'number') {
+                updateMetric('success-rate', `${data.overall_metrics.success_rate.toFixed(1)}%`);
+            }
+            if (typeof data.overall_metrics.total_completed === 'number') {
+                tasksCompleted = data.overall_metrics.total_completed;
+                updateMetric('tasks-completed', tasksCompleted);
+            }
+            if (typeof data.overall_metrics.total_agents === 'number') {
+                agentCount = data.overall_metrics.total_agents;
+            }
+        }
+
+        const overview = data.collective_intelligence?.ecosystem_overview;
+        if (overview) {
+            if (typeof overview.collective_insights_generated === 'number') {
+                updateMetric('insights-generated', overview.collective_insights_generated);
+            }
+            if (typeof overview.emergent_behaviors_detected === 'number') {
+                updateMetric('emergent-behaviors', overview.emergent_behaviors_detected);
+            }
+        }
+
+        if (data.ecosystem) {
+            updateSummaryCards({
+                manager: data.ecosystem.manager_status || 'unknown'
+            });
+            if (typeof data.ecosystem.active_agents === 'number') {
+                agentCount = data.ecosystem.total_agents || agentCount;
+                updateMetric('active-agents', data.ecosystem.active_agents);
+            }
+        }
+
+        if (data.background_agents) {
+            updateSummaryCards({
+                background: data.background_agents.enabled ? 'enabled' : 'disabled'
+            });
+        }
+    }
+
+    function initWebSocket() {
+        try {
+            ws = new WebSocket('ws://localhost:8000/ws');
+        } catch (error) {
+            console.warn('Unable to open WebSocket connection', error);
+            addThought('system-thoughts', 'warning', 'WebSocket unavailable, falling back to manual refresh.');
+            return;
+        }
+
+        ws.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'thought') {
+                    addThought(data.panelId, data.thoughtType, data.message, data.timestamp);
+                } else if (data.type === 'metric') {
+                    updateMetric(data.metricId, data.value);
+                } else if (data.type === 'status') {
+                    updateStatusIndicator(data.elementId, data.state);
+                } else if (data.type === 'metric_init' || data.type === 'metric_update') {
+                    handleMetricPayload(data);
+                } else if (data.type === 'summary') {
+                    updateSummaryCards(data.payload || {});
+                }
+            } catch (error) {
+                console.error('Failed to process WebSocket message', error);
+            }
+        };
+
+        ws.onopen = function() {
+            addThought('system-thoughts', 'analysis', 'WebSocket connected to backend');
+        };
+
+        ws.onerror = function(event) {
+            console.error('WebSocket error', event);
+            addThought('system-thoughts', 'warning', 'WebSocket connection error');
+        };
+
+        ws.onclose = function() {
+            addThought('system-thoughts', 'warning', 'WebSocket disconnected');
+        };
+    }
+
+    async function askQuestion() {
+        const questionInput = document.getElementById('question-input');
+        const askButton = document.getElementById('ask-button');
+        const responseArea = document.getElementById('response-area');
+        const question = questionInput.value.trim();
+
+        if (!question || isProcessing) return;
+
+        isProcessing = true;
+        askButton.disabled = true;
+        askButton.innerHTML = '🔄 Processing...';
+        responseArea.classList.add('processing');
+
+        setStatus('main-status', 'processing');
+        setStatus('agent-status', 'thinking');
+        setStatus('ci-status', 'processing');
+        setStatus('llm-status', 'processing');
+
+        addThought('agent-thoughts', 'analysis', `Processing question: "${question.substring(0, 64)}"`);
+        addThought('ci-thoughts', 'insight', 'Routing intent to specialist agent clusters');
+        addThought('system-thoughts', 'analysis', 'Question received, orchestrating multi-agent workflow');
+
+        try {
+            const response = await fetch('/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question,
+                    context: { ui_session: true }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+
+            const data = await response.json();
+            const successfulResponses = data.processing_summary?.successful_responses || 0;
+            const totalAgents = data.processing_summary?.total_agents_queried || agentCount;
+            const successRate = totalAgents ? Math.round((successfulResponses / totalAgents) * 100) : 0;
+            updateMetric('success-rate', `${successRate}%`);
+
+            responseArea.innerHTML = `
+                <div class="insight-highlight">
+                    <h3>🎯 Comprehensive Agent Network Response</h3>
+                    <p><strong>Question:</strong> ${question}</p>
+                </div>
+                <div style="margin: 1rem 0;">
+                    <h4>📋 Processing Summary</h4>
+                    <p>Agents Queried: ${totalAgents}</p>
+                    <p>Successful Responses: ${successfulResponses}</p>
+                    <p>Collective Intelligence: ${data.processing_summary?.collective_intelligence_generated ? 'Yes' : 'No'}</p>
+                </div>
+                <div style="margin: 1rem 0;">
+                    <h4>💡 Synthesized Answer</h4>
+                    <div style="background: var(--assistant-output-bg); padding: 1rem; border-radius: 12px; margin-top: 0.5rem; border: 1px solid var(--panel-border);">
+                        ${data.comprehensive_answer || data.answer || 'Processing response...'}
+                    </div>
+                </div>
+                <div style="margin: 1rem 0;">
+                    <h4>🤖 Agent Contributions</h4>
+                    <div id="agent-contributions"></div>
+                </div>
+            `;
+
+            renderAgentContributions(data.agent_contributions || data.result?.agent_contributions || []);
+            renderLLMDialogue(data);
+
+            if (data.metrics_snapshot) {
+                handleMetricPayload({ data: data.metrics_snapshot });
+            }
+        } catch (error) {
+            console.error('Error asking question:', error);
+            responseArea.innerHTML = `
+                <div style="color: #F44336; background: rgba(244, 67, 54, 0.1); padding: 1rem; border-radius: 12px; border: 1px solid rgba(244, 67, 54, 0.2);">
+                    ❌ Error communicating with agent network: ${error.message}
+                    <br><br>
+                    <small>Ensure the agent API is reachable on port 8000.</small>
+                </div>
+            `;
+            addThought('agent-thoughts', 'warning', 'Connection error with agent network');
+            addThought('system-thoughts', 'warning', 'API communication failed');
+            setStatus('main-status', 'error');
+            setStatus('agent-status', 'error');
+            setStatus('llm-status', 'error');
+        } finally {
+            isProcessing = false;
+            askButton.disabled = false;
+            askButton.innerHTML = '🚀 Ask All Agents';
+            responseArea.classList.remove('processing');
+            setStatus('main-status', 'idle');
+            setStatus('agent-status', 'idle');
+            setStatus('ci-status', 'idle');
+        }
+    }
+
+    async function askTerry() {
+        const input = document.getElementById('terry-input');
+        const prompt = input.value.trim();
+        if (!prompt) return;
+
+        updateStatusIndicator('terry-status', 'processing');
+        document.getElementById('terry-status-text').textContent = 'Thinking locally...';
+        document.getElementById('terry-response').textContent = 'Processing with Terry Delmonaco...';
+
+        try {
+            const response = await fetch('/terry/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt })
+            });
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            const data = await response.json();
+            document.getElementById('terry-response').textContent = data.response || JSON.stringify(data, null, 2);
+            document.getElementById('terry-status-text').textContent = `Ready · Latency ${Math.round(data.latency_ms || 0)} ms (${data.mode || 'local'})`;
+            updateStatusIndicator('terry-status', 'thinking');
+            updateSummaryCards({ terry: 'online' });
+        } catch (error) {
+            document.getElementById('terry-response').textContent = 'Error contacting Terry: ' + error;
+            document.getElementById('terry-status-text').textContent = 'Launch AgentC bridge and retry.';
+            updateStatusIndicator('terry-status', 'error');
+            updateSummaryCards({ terry: 'offline' });
+        }
+    }
+
+    async function createTerryTask() {
+        const input = document.getElementById('terry-input');
+        const prompt = input.value.trim();
+        const recurrence = document.getElementById('terry-recurrence').value.trim();
+        if (!prompt) return;
+
+        updateStatusIndicator('terry-status', 'processing');
+        document.getElementById('terry-status-text').textContent = 'Logging follow-up task...';
+        try {
+            const response = await fetch('/terry/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: prompt.slice(0, 80),
+                    description: prompt,
+                    recurrence_rule: recurrence || null
+                })
+            });
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            document.getElementById('terry-status-text').textContent = 'Task captured for Terry';
+            updateStatusIndicator('terry-status', 'thinking');
+        } catch (error) {
+            document.getElementById('terry-status-text').textContent = 'Unable to log task: ' + error;
+            updateStatusIndicator('terry-status', 'error');
+        }
+    }
+
+    async function refreshTerryStatus() {
+        try {
+            const response = await fetch('/terry/status');
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            const data = await response.json();
+            if (data.status && data.status.connected) {
+                updateStatusIndicator('terry-status', 'thinking');
+                const openTasks = (data.open_tasks || []).length;
+                const recurring = (data.open_tasks || []).filter(task => task.recurrence_rule).length;
+                let statusLine = `Online · ${openTasks} open tasks`;
+                if (recurring > 0) {
+                    statusLine += ` · ${recurring} recurring`;
+                }
+                document.getElementById('terry-status-text').textContent = statusLine;
+                updateSummaryCards({ terry: 'online' });
+            } else {
+                updateStatusIndicator('terry-status', 'error');
+                document.getElementById('terry-status-text').textContent = 'Terry bridge offline. Run AgentC Terry bridge.';
+                updateSummaryCards({ terry: 'offline' });
+            }
+        } catch (error) {
+            updateStatusIndicator('terry-status', 'error');
+            document.getElementById('terry-status-text').textContent = 'Terry status unavailable: ' + error;
+            updateSummaryCards({ terry: 'unknown' });
+        }
+    }
+
+    function updateSummaryCards(partial = {}) {
+        const managerEl = document.getElementById('summary-manager');
+        const backgroundEl = document.getElementById('summary-background');
+        const terryEl = document.getElementById('summary-terry');
+
+        if (partial.manager && managerEl) {
+            managerEl.textContent = partial.manager;
+        }
+        if (partial.background && backgroundEl) {
+            backgroundEl.textContent = partial.background;
+        }
+        if (partial.terry && terryEl) {
+            terryEl.textContent = partial.terry;
+        }
+    }
+
+    function setTheme(theme) {
+        document.body.dataset.theme = theme;
+        localStorage.setItem(THEME_STORAGE_KEY, theme);
+        const toggle = document.getElementById('theme-toggle');
+        if (!toggle) return;
+        const icon = toggle.querySelector('.toggle-icon');
+        const label = toggle.querySelector('.toggle-label');
+        if (theme === 'dark') {
+            if (icon) icon.textContent = '🌙';
+            if (label) label.textContent = 'Dark';
+        } else {
+            if (icon) icon.textContent = '🌞';
+            if (label) label.textContent = 'Light';
+        }
+    }
+
+    function initTheme() {
+        const stored = localStorage.getItem(THEME_STORAGE_KEY);
+        setTheme(stored === 'dark' ? 'dark' : 'light');
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                const next = document.body.dataset.theme === 'light' ? 'dark' : 'light';
+                setTheme(next);
+            });
+        }
+    }
+
+    function initQuickActions() {
+        document.querySelectorAll('.quick-action-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const action = btn.dataset.action;
+                btn.disabled = true;
+                try {
+                    await handleQuickAction(action);
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        });
+    }
+
+    async function handleQuickAction(action) {
+        if (action === 'status') {
+            await fetchStatusSnapshot();
+        } else if (action === 'health') {
+            await performHealthCheck();
+        } else if (action === 'metrics') {
+            await fetchMetricsSnapshot();
+        }
+    }
+
+    async function fetchStatusSnapshot() {
+        try {
+            const response = await fetch('/status');
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            const snapshot = await response.json();
+            if (snapshot.ecosystem) {
+                agentCount = snapshot.ecosystem.total_agents || agentCount;
+                updateMetric('active-agents', snapshot.ecosystem.active_agents || 0);
+                updateSummaryCards({ manager: snapshot.ecosystem.manager_status || 'unknown' });
+            }
+            if (snapshot.background_agents) {
+                updateSummaryCards({ background: snapshot.background_agents.enabled ? 'enabled' : 'disabled' });
+            }
+            if (snapshot.metrics) {
+                const avgLatency = snapshot.metrics.gauges?.['task.average_latency_ms'];
+                if (typeof avgLatency === 'number') {
+                    updateMetric('response-time', Math.round(avgLatency));
+                }
+                const completed = snapshot.metrics.counters?.['tasks.completed'];
+                if (typeof completed === 'number') {
+                    tasksCompleted = completed;
+                    updateMetric('tasks-completed', completed);
+                }
+            }
+            addThought('system-thoughts', 'analysis', 'Status snapshot refreshed');
+        } catch (error) {
+            addThought('system-thoughts', 'warning', `Status refresh failed: ${error.message}`);
+        }
+    }
+
+    async function fetchMetricsSnapshot() {
+        try {
+            const response = await fetch('/metrics');
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            const metrics = await response.json();
+            const recent = metrics.recent_events || [];
+            const lastEvent = recent[recent.length - 1];
+            if (lastEvent) {
+                addThought('ci-thoughts', 'analysis', `Latest metric: ${lastEvent.name} → ${lastEvent.value}`);
+            } else {
+                addThought('ci-thoughts', 'analysis', 'Metrics snapshot refreshed');
+            }
+        } catch (error) {
+            addThought('ci-thoughts', 'warning', `Metrics snapshot unavailable: ${error.message}`);
+        }
+    }
+
+    async function performHealthCheck() {
+        try {
+            const response = await fetch('/health');
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            const health = await response.json();
+            addThought('system-thoughts', 'analysis', `Health: ${health.status} at ${health.timestamp}`);
+        } catch (error) {
+            addThought('system-thoughts', 'warning', `Health check failed: ${error.message}`);
+        }
+    }
+
+    function updateSystemMetrics() {
+        // System metrics now flow via WebSocket or manual refresh commands.
+    }
+
+    document.getElementById('question-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && e.ctrlKey) {
+            askQuestion();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initTheme();
+        initQuickActions();
+        initWebSocket();
+        addThought('system-thoughts', 'analysis', 'Real-time UI initialized');
+        addThought('agent-thoughts', 'decision', 'Agent network ready for questions');
+        addThought('ci-thoughts', 'insight', 'Collective intelligence framework active');
+        refreshTerryStatus();
+        setInterval(refreshTerryStatus, 15000);
+        fetchStatusSnapshot();
+    });
+</script>
+
+</body>
+</html>

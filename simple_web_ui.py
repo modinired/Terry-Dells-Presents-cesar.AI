@@ -39,6 +39,10 @@ class TerryTaskRequest(BaseModel):
     description: Optional[str] = ""
 
 
+class MobileRequest(BaseModel):
+    prompt: str
+
+
 def infer_task_type(question: str) -> str:
     """Infer task type based on user question heuristics."""
     lowered = question.lower()
@@ -402,6 +406,54 @@ async def terry_status():
     tasks = await orchestrator.list_terry_tasks(status="open")
     open_tasks = tasks.get("tasks", [])
     return {"status": status, "open_tasks": open_tasks}
+
+
+@app.post("/mobile/ask", tags=["Mobile"])
+async def mobile_ask(request: MobileRequest):
+    """
+    Endpoint for mobile clients to submit tasks.
+    Leverages the same core logic as the main 'ask' endpoint but is optimized
+    for simple, prompt-based interactions from a mobile-first UI.
+    """
+    question = request.prompt.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
+
+    orchestrator: CESARAIOrchestrator = app.state.orchestrator
+    task_type = infer_task_type(question)
+    task_payload = {
+        "task_id": f"mobile-ui-{uuid4()}",
+        "task_type": task_type,
+        "task_description": question,
+        "priority": "routine",
+        "source": "mobile_ui",
+        "created_at": datetime.now().isoformat(),
+    }
+
+    result = await orchestrator.delegate_task(task_payload)
+    await metrics.add_event(
+        "mobile_ui.ask",
+        1,
+        metadata={"task_type": task_type, "status": result.get("status", "unknown")},
+    )
+
+    return {
+        "question": question,
+        "task_type": task_type,
+        "result": result,
+        "timestamp": datetime.now().isoformat(),
+    }
+
+
+@app.get("/mobile", response_class=HTMLResponse, tags=["Mobile"])
+async def serve_mobile_ui():
+    """Serves the mobile-optimized HTML interface."""
+    try:
+        with open("static/mobile.html", "r") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Mobile UI not found.")
+
 
 if __name__ == "__main__":
     print("🚀 Starting CESAR.ai Atlas Final - User Dashboard")

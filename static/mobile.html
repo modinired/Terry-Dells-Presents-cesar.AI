@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CESAR Mobile</title>
+    <style>
+        :root {
+            --background-color: #1a1a1d;
+            --primary-color: #4CAF50;
+            --text-color: #f5f5f5;
+            --input-bg-color: #2c2c34;
+            --response-bg-color: #252528;
+            --border-radius: 12px;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        header {
+            text-align: center;
+            padding-bottom: 1rem;
+        }
+        h1 {
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        #response-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            background-color: var(--response-bg-color);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        #form {
+            display: flex;
+            gap: 0.5rem;
+        }
+        #prompt {
+            flex-grow: 1;
+            padding: 0.75rem;
+            border: 1px solid var(--primary-color);
+            border-radius: var(--border-radius);
+            background-color: var(--input-bg-color);
+            color: var(--text-color);
+            font-size: 1rem;
+            resize: none;
+        }
+        #send-button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius);
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #send-button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary-color);
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CESAR Mobile Agent</h1>
+        </header>
+
+        <div id="response-container">
+            <p>Welcome! Ask the agent anything.</p>
+        </div>
+
+        <form id="form" onsubmit="submitPrompt(event)">
+            <textarea id="prompt" rows="1" placeholder="Type your prompt here..."></textarea>
+            <button id="send-button" type="submit">Send</button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('form');
+        const promptTextarea = document.getElementById('prompt');
+        const sendButton = document.getElementById('send-button');
+        const responseContainer = document.getElementById('response-container');
+
+        // Auto-resize textarea
+        promptTextarea.addEventListener('input', () => {
+            promptTextarea.style.height = 'auto';
+            promptTextarea.style.height = (promptTextarea.scrollHeight) + 'px';
+        });
+
+        async function submitPrompt(event) {
+            event.preventDefault();
+            const prompt = promptTextarea.value.trim();
+            if (!prompt) return;
+
+            // UI feedback
+            sendButton.disabled = true;
+            sendButton.textContent = '...';
+            responseContainer.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await fetch('/mobile/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                const data = await response.json();
+                responseContainer.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+
+            } catch (error) {
+                responseContainer.innerHTML = `<p style="color: #ff4d4d;"><strong>Error:</strong> ${error.message}</p>`;
+            } finally {
+                // Restore UI
+                sendButton.disabled = false;
+                sendButton.textContent = 'Send';
+                promptTextarea.value = '';
+                promptTextarea.style.height = 'auto';
+                responseContainer.scrollTop = responseContainer.scrollHeight;
+            }
+        }
+    </script>
+</body>
+</html>

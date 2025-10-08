@@ -1,0 +1,62 @@
+{
+  "name": "llm-integrator",
+  "displayName": "LLM Integrator",
+  "description": "A unified pane for LLM agent interactions",
+  "version": "0.0.1",
+  "publisher": "user",
+  "engines": {
+    "vscode": "^1.83.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "LLM Integrator",
+      "properties": {
+        "llm-integrator.agents": {
+          "type": "array",
+          "default": [],
+          "description": "A list of shell commands to run as LLM agents."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "llm-integrator-view-container",
+          "title": "LLM Integrator",
+          "icon": "images/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "llm-integrator-view-container": [
+        {
+          "id": "llm-integrator.agent-view",
+          "name": "Agent Interactions",
+          "type": "webview"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.83.0",
+    "@types/node": "18.x",
+    "typescript": "^5.2.2",
+    "eslint": "^8.51.0",
+    "@typescript-eslint/parser": "^6.8.0",
+    "@typescript-eslint/eslint-plugin": "^6.8.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

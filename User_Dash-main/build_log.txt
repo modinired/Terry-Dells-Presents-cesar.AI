@@ -1,0 +1,143 @@
+--- Starting build and package process at Tue Oct  7 17:07:32 UTC 2025 ---
+Changing directory to /app/vscode-llm-integrator...
+Installing npm dependencies...
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+
+added 137 packages, and audited 138 packages in 14s
+
+35 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+Compiling TypeScript source...
+
+> llm-integrator@0.0.1 compile
+> tsc -p ./
+
+Installing vsce globally...
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated vsce@2.15.0: vsce has been renamed to @vscode/vsce. Install using @vscode/vsce instead.
+npm error code 1
+npm error path /home/jules/.nvm/versions/node/v22.17.1/lib/node_modules/vsce/node_modules/keytar
+npm error command failed
+npm error command sh -c prebuild-install || npm run build
+npm error > keytar@7.9.0 build
+npm error > node-gyp rebuild
+npm error prebuild-install warn install Request timed out
+npm error gyp info it worked if it ends with ok
+npm error gyp info using node-gyp@11.2.0
+npm error gyp info using node@22.17.1 | linux | x64
+npm error gyp info find Python using Python version 3.12.11 found at "/home/jules/.pyenv/versions/3.12.11/bin/python3"
+npm error gyp http GET https://nodejs.org/download/release/v22.17.1/node-v22.17.1-headers.tar.gz
+npm error gyp http 200 https://nodejs.org/download/release/v22.17.1/node-v22.17.1-headers.tar.gz
+npm error gyp http GET https://nodejs.org/download/release/v22.17.1/SHASUMS256.txt
+npm error gyp http 200 https://nodejs.org/download/release/v22.17.1/SHASUMS256.txt
+npm error gyp info spawn /home/jules/.pyenv/versions/3.12.11/bin/python3
+npm error gyp info spawn args [
+npm error gyp info spawn args '/home/jules/.nvm/versions/node/v22.17.1/lib/node_modules/npm/node_modules/node-gyp/gyp/gyp_main.py',
+npm error gyp info spawn args 'binding.gyp',
+npm error gyp info spawn args '-f',
+npm error gyp info spawn args 'make',
+npm error gyp info spawn args '-I',
+npm error gyp info spawn args '/home/jules/.nvm/versions/node/v22.17.1/lib/node_modules/vsce/node_modules/keytar/build/config.gypi',
+npm error gyp info spawn args '-I',
+npm error gyp info spawn args '/home/jules/.nvm/versions/node/v22.17.1/lib/node_modules/npm/node_modules/node-gyp/addon.gypi',
+npm error gyp info spawn args '-I',
+npm error gyp info spawn args '/home/jules/.cache/node-gyp/22.17.1/include/node/common.gypi',
+npm error gyp info spawn args '-Dlibrary=shared_library',
+npm error gyp info spawn args '-Dvisibility=default',
+npm error gyp info spawn args '-Dnode_root_dir=/home/jules/.cache/node-gyp/22.17.1',
+npm error gyp info spawn args '-Dnode_gyp_dir=/home/jules/.nvm/versions/node/v22.17.1/lib/node_modules/npm/node_modules/node-gyp',
+npm error gyp info spawn args '-Dnode_lib_file=/home/jules/.cache/node-gyp/22.17.1/<(target_arch)/node.lib',
+npm error gyp info spawn args '-Dmodule_root_dir=/home/jules/.nvm/versions/node/v22.17.1/lib/node_modules/vsce/node_modules/keytar',
+npm error gyp info spawn args '-Dnode_engine=v8',
+npm error gyp info spawn args '--depth=.',
+npm error gyp info spawn args '--no-parallel',
+npm error gyp info spawn args '--generator-output',
+npm error gyp info spawn args 'build',
+npm error gyp info spawn args '-Goutput_dir=.'
+npm error gyp info spawn args ]
+npm error Package libsecret-1 was not found in the pkg-config search path.
+npm error Perhaps you should add the directory containing `libsecret-1.pc'
+npm error to the PKG_CONFIG_PATH environment variable
+npm error Package 'libsecret-1', required by 'virtual:world', not found
+npm error gyp: Call to 'pkg-config --cflags libsecret-1' returned exit status 1 while in binding.gyp. while trying to load binding.gyp
+npm error gyp ERR! configure error
+npm error gyp ERR! stack Error: `gyp` failed with exit code: 1
+npm error gyp ERR! stack at ChildProcess.<anonymous> (/home/jules/.nvm/versions/node/v22.17.1/lib/node_modules/npm/node_modules/node-gyp/lib/configure.js:317:18)
+npm error gyp ERR! stack at ChildProcess.emit (node:events:518:28)
+npm error gyp ERR! stack at ChildProcess._handle.onexit (node:internal/child_process:293:12)
+npm error gyp ERR! System Linux 6.8.0
+npm error gyp ERR! command "/home/jules/.nvm/versions/node/v22.17.1/bin/node" "/home/jules/.nvm/versions/node/v22.17.1/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js" "rebuild"
+npm error gyp ERR! cwd /home/jules/.nvm/versions/node/v22.17.1/lib/node_modules/vsce/node_modules/keytar
+npm error gyp ERR! node -v v22.17.1
+npm error gyp ERR! node-gyp -v v11.2.0
+npm error gyp ERR! not ok
+npm error A complete log of this run can be found in: /home/jules/.npm/_logs/2025-10-07T17_07_49_390Z-debug-0.log
+--- Starting build and package process at Tue Oct  7 17:09:20 UTC 2025 ---
+Changing directory to /app/vscode-llm-integrator...
+Installing npm dependencies...
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+
+added 310 packages, and audited 311 packages in 11s
+
+83 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+Compiling TypeScript source...
+
+> llm-integrator@0.0.1 compile
+> tsc -p ./
+
+Packaging the extension with local vsce...
+Executing prepublish script 'npm run vscode:prepublish'...
+
+> llm-integrator@0.0.1 vscode:prepublish
+> npm run compile
+
+
+> llm-integrator@0.0.1 compile
+> tsc -p ./
+
+ WARNING  A 'repository' field is missing from the 'package.json' manifest file.
+Use --allow-missing-repository to bypass.
+ WARNING  LICENSE, LICENSE.md, or LICENSE.txt not found
+ WARNING  Neither a .vscodeignore file nor a "files" property in package.json was found. To ensure only necessary files are included in your extension, add a .vscodeignore file or specify the "files" property in package.json. More info: https://aka.ms/vscode-vscodeignore
+
+ INFO  Files included in the VSIX:
+llm-integrator-0.0.1.vsix
+├─ [Content_Types].xml
+├─ extension.vsixmanifest
+└─ extension/
+   ├─ .gitignore [0.18 KB]
+   ├─ package.json [1.42 KB]
+   ├─ tsconfig.json [0.25 KB]
+   ├─ images/
+   │  └─ icon.svg [0.24 KB]
+   ├─ media/
+   │  ├─ main.css [0.87 KB]
+   │  └─ main.js [2.19 KB]
+   ├─ out/
+   │  ├─ AgentViewProvider.js [2.14 KB]
+   │  ├─ AgentViewProvider.js.map [1.47 KB]
+   │  ├─ extension.js [2.61 KB]
+   │  └─ extension.js.map [2.39 KB]
+   └─ src/
+      ├─ AgentViewProvider.ts [2.04 KB]
+      └─ extension.ts [2.12 KB]
+
+ DONE  Packaged: llm-integrator-0.0.1.vsix (14 files, 9.48 KB)
+--- Build and package process completed successfully at Tue Oct  7 17:09:38 UTC 2025 ---
+The packaged extension can be found at /app/vscode-llm-integrator/llm-integrator-0.0.1.vsix

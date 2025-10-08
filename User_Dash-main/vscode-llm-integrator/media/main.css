@@ -1,0 +1,40 @@
+body {
+    font-family: var(--vscode-font-family);
+    color: var(--vscode-editor-foreground);
+    background-color: var(--vscode-editor-background);
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+li {
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid var(--vscode-editorWidget-border);
+    border-radius: 5px;
+    white-space: pre-wrap; /* Preserve whitespace and newlines */
+}
+
+.question {
+    margin-bottom: 8px;
+}
+
+.button-group button {
+    margin-right: 10px;
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: 1px solid var(--vscode-button-border);
+    padding: 4px 8px;
+    cursor: pointer;
+}
+
+.button-group button:hover {
+    background-color: var(--vscode-button-hoverBackground);
+}
+
+.button-group button:disabled {
+    background-color: var(--vscode-disabledForeground);
+    cursor: not-allowed;
+}

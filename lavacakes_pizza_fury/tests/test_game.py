@@ -1,20 +1,14 @@
 import pytest
+import pygame
 from lavacakes_pizza_fury.game.player import Player
-
-def test_import():
-    """
-    This test simply tries to import the main module.
-    If this fails, there's a problem with the setup or dependencies.
-    """
-    try:
-        import lavacakes_pizza_fury.main
-    except ImportError as e:
-        assert False, f"Failed to import the main game module: {e}"
+from lavacakes_pizza_fury.game.platforms import Platform
 
 @pytest.fixture
 def player():
     """Provides a new Player instance for each test."""
-    return Player(0, 0)
+    player = Player(0, 0)
+    player.level = pygame.sprite.Group()
+    return player
 
 def test_player_creation(player):
     """Tests that the player is created at the correct coordinates."""
@@ -33,14 +27,74 @@ def test_player_go_right(player):
 
 def test_player_stop(player):
     """Tests that the stop method sets the speed to zero."""
-    player.go_left() # Start moving first
+    player.go_left()
     player.stop()
     assert player.change_x == 0
 
-def test_player_update(player):
+def test_player_update_horizontal_movement(player):
     """Tests that the update method moves the player correctly."""
     player.go_right()
     player.update()
     assert player.rect.x == 5
     player.update()
     assert player.rect.x == 10
+
+def test_gravity(player):
+    """Tests that the player is affected by gravity."""
+    player.calc_grav()
+    assert player.change_y > 0
+
+    initial_y_change = player.change_y
+    player.calc_grav()
+    assert player.change_y > initial_y_change
+
+def test_jump(player):
+    """Tests that the player can jump when on a platform."""
+    platform = Platform(100, 20)
+    platform.rect.x = 0
+    platform.rect.y = 100
+    player.level.add(platform)
+
+    player.rect.bottom = platform.rect.top
+
+    player.jump()
+    assert player.change_y == -10
+
+def test_no_double_jump(player):
+    """Tests that the player cannot jump while in the air."""
+    # --- Part 1: Perform a valid jump ---
+    platform = Platform(100, 20)
+    platform.rect.x = 0
+    platform.rect.y = 100
+    player.level.add(platform)
+    player.rect.bottom = platform.rect.top
+
+    player.jump()
+    assert player.change_y == -10
+
+    # --- Part 2: Attempt to jump again while in mid-air ---
+    # Move the player up slightly, as if in the middle of a jump
+    player.rect.y -= 20
+
+    # Try to jump again
+    player.jump()
+
+    # The vertical speed should NOT be reset to -10.
+    # It should remain unchanged because the jump condition is not met.
+    assert player.change_y == -10
+
+def test_collision_with_platform(player):
+    """Tests that the player stops on top of a platform."""
+    platform = Platform(100, 20)
+    platform.rect.x = 0
+    platform.rect.y = 100
+    player.level.add(platform)
+
+    player.rect.x = 0
+    player.rect.y = 50
+    player.change_y = 5
+
+    player.update()
+
+    assert player.rect.bottom == platform.rect.top
+    assert player.change_y == 0

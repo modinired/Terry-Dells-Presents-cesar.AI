@@ -1,7 +1,8 @@
 import pygame
 import sys
 from .game.player import Player
-from .game.level import Level_01
+from .game.level import Level_01, Level_02
+from .game.sound_manager import SoundManager
 
 # --- Constants ---
 SCREEN_WIDTH = 800
@@ -31,19 +32,23 @@ def main():
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Lavacakes: Pizza Fury")
 
-    # --- Game State ---
+    sound_manager = SoundManager()
+    sound_manager.load_sound('jump', 'assets/sounds/jump.wav')
+    sound_manager.load_sound('stomp', 'assets/sounds/stomp.wav')
+    sound_manager.load_sound('death', 'assets/sounds/death.wav')
+    sound_manager.load_music('assets/music/background.ogg')
+    sound_manager.play_music()
+
     score = 0
     lives = 3
     game_over = False
 
-    # --- Create the player ---
     player = Player(50, 50)
 
-    # --- Create all the levels ---
     level_list = []
     level_list.append(Level_01(player))
+    level_list.append(Level_02(player))
 
-    # Set the current level
     current_level_no = 0
     current_level = level_list[current_level_no]
 
@@ -58,7 +63,6 @@ def main():
 
     clock = pygame.time.Clock()
 
-    # --- Main Game Loop ---
     running = True
     while running:
         for event in pygame.event.get():
@@ -73,6 +77,7 @@ def main():
                         player.go_right()
                     if event.key == pygame.K_SPACE:
                         player.jump()
+                        sound_manager.play_sound('jump')
 
             if event.type == pygame.KEYUP:
                 if not game_over:
@@ -85,6 +90,23 @@ def main():
             active_sprite_list.update()
             current_level.update()
 
+            # --- Level Transition ---
+            if pygame.sprite.spritecollide(player, current_level.goal, False):
+                current_level_no += 1
+                if current_level_no < len(level_list):
+                    current_level = level_list[current_level_no]
+                    player.level = current_level
+                    player.rect.x = 340
+                    player.rect.y = SCREEN_HEIGHT - player.rect.height
+
+                    active_sprite_list.empty()
+                    active_sprite_list.add(player)
+                    for enemy in current_level.enemy_list:
+                        active_sprite_list.add(enemy)
+                else:
+                    # You win!
+                    game_over = True
+
             # --- Player-Enemy Collision ---
             enemy_hit_list = pygame.sprite.spritecollide(player, current_level.enemy_list, False)
 
@@ -93,28 +115,26 @@ def main():
                     current_level.enemy_list.remove(enemy)
                     active_sprite_list.remove(enemy)
                     score += 100
+                    sound_manager.play_sound('stomp')
                 else:
                     lives -= 1
+                    sound_manager.play_sound('death')
                     if lives <= 0:
                         game_over = True
                     else:
-                        # Reset level
                         world_shift = current_level.world_shift
                         current_level.shift_world(-world_shift)
                         player.rect.x = 340
                         player.rect.y = SCREEN_HEIGHT - player.rect.height
 
-                        # We need to recreate the level to restore enemies
-                        level_list[current_level_no] = Level_01(player)
+                        level_list[current_level_no] = type(current_level)(player)
                         current_level = level_list[current_level_no]
                         player.level = current_level
 
-                        # Reset active sprite list
                         active_sprite_list.empty()
                         active_sprite_list.add(player)
                         for new_enemy in current_level.enemy_list:
                             active_sprite_list.add(new_enemy)
-
 
             # --- Scrolling Logic ---
             if player.rect.right >= 500:
@@ -134,6 +154,7 @@ def main():
 
         if game_over:
             game_over_screen(screen)
+            sound_manager.stop_music()
 
         pygame.display.flip()
         clock.tick(60)

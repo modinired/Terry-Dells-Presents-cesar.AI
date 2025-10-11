@@ -70,11 +70,10 @@ class Level_01(Level):
             self.platform_list.add(block)
 
         # --- Enemies ---
-        # Add a patrolling enemy
         enemy = Enemy(30, 50)
         enemy.rect.x = 800
         enemy.rect.y = 350
         enemy.boundary_left = 800
-        enemy.boundary_right = 800 + 180 # Patrol on the platform
+        enemy.boundary_right = 800 + 180
         enemy.level = self
         self.enemy_list.add(enemy)

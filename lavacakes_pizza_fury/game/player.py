@@ -23,6 +23,7 @@ class Player(pygame.sprite.Sprite):
         self.change_x = 0
         self.change_y = 0
 
+        # This will be a reference to the entire level object.
         self.level = None
 
     def update(self):
@@ -31,7 +32,7 @@ class Player(pygame.sprite.Sprite):
 
         # --- Horizontal Movement & Collision ---
         self.rect.x += self.change_x
-        block_hit_list = pygame.sprite.spritecollide(self, self.level, False)
+        block_hit_list = pygame.sprite.spritecollide(self, self.level.platform_list, False)
         for block in block_hit_list:
             if self.change_x > 0:
                 self.rect.right = block.rect.left
@@ -40,7 +41,7 @@ class Player(pygame.sprite.Sprite):
 
         # --- Vertical Movement & Collision ---
         self.rect.y += self.change_y
-        block_hit_list = pygame.sprite.spritecollide(self, self.level, False)
+        block_hit_list = pygame.sprite.spritecollide(self, self.level.platform_list, False)
         for block in block_hit_list:
             if self.change_y > 0:
                 self.rect.bottom = block.rect.top
@@ -57,14 +58,10 @@ class Player(pygame.sprite.Sprite):
 
     def jump(self):
         """ Called when user hits the 'jump' button. """
-        # To prevent double-jumping, we'll only allow a jump if the player is
-        # near the ground. We check this by seeing if they can collide with a
-        # platform below them.
         self.rect.y += 2
-        platform_hit_list = pygame.sprite.spritecollide(self, self.level, False)
+        platform_hit_list = pygame.sprite.spritecollide(self, self.level.platform_list, False)
         self.rect.y -= 2
 
-        # If it is ok to jump, set our speed upwards
         if len(platform_hit_list) > 0 or self.rect.bottom >= 600:
             self.change_y = -10
 

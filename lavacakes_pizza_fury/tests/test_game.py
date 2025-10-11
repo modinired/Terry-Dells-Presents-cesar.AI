@@ -1,13 +1,13 @@
 import pytest
 import pygame
 from lavacakes_pizza_fury.game.player import Player
-from lavacakes_pizza_fury.game.platforms import Platform
+from lavacakes_pizza_fury.game.level import Level, Platform
 
 @pytest.fixture
 def player():
-    """Provides a new Player instance for each test."""
+    """Provides a new Player instance with a proper Level object."""
     player = Player(0, 0)
-    player.level = pygame.sprite.Group()
+    player.level = Level(player)
     return player
 
 def test_player_creation(player):
@@ -53,7 +53,7 @@ def test_jump(player):
     platform = Platform(100, 20)
     platform.rect.x = 0
     platform.rect.y = 100
-    player.level.add(platform)
+    player.level.platform_list.add(platform)
 
     player.rect.bottom = platform.rect.top
 
@@ -62,25 +62,19 @@ def test_jump(player):
 
 def test_no_double_jump(player):
     """Tests that the player cannot jump while in the air."""
-    # --- Part 1: Perform a valid jump ---
     platform = Platform(100, 20)
     platform.rect.x = 0
     platform.rect.y = 100
-    player.level.add(platform)
+    player.level.platform_list.add(platform)
     player.rect.bottom = platform.rect.top
 
     player.jump()
     assert player.change_y == -10
 
-    # --- Part 2: Attempt to jump again while in mid-air ---
-    # Move the player up slightly, as if in the middle of a jump
     player.rect.y -= 20
 
-    # Try to jump again
     player.jump()
 
-    # The vertical speed should NOT be reset to -10.
-    # It should remain unchanged because the jump condition is not met.
     assert player.change_y == -10
 
 def test_collision_with_platform(player):
@@ -88,7 +82,7 @@ def test_collision_with_platform(player):
     platform = Platform(100, 20)
     platform.rect.x = 0
     platform.rect.y = 100
-    player.level.add(platform)
+    player.level.platform_list.add(platform)
 
     player.rect.x = 0
     player.rect.y = 50

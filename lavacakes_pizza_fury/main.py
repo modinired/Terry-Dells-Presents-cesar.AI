@@ -1,15 +1,11 @@
 import pygame
 import sys
 from game.player import Player
-from game.platforms import Platform
+from game.level import Level_01
 
 # --- Constants ---
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
 
 def main():
     """ Main program function. """
@@ -18,28 +14,23 @@ def main():
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Lavacakes: Pizza Fury")
 
-    # --- Create the sprite lists ---
-    all_sprites_list = pygame.sprite.Group()
-    platform_list = pygame.sprite.Group()
-
-    # --- Create the platforms ---
-    level = [
-        (500, 50, 0, 550),      # Ground
-        (200, 30, 200, 400),
-        (150, 30, 500, 300),
-    ]
-
-    for plat in level:
-        platform = Platform(plat[0], plat[1])
-        platform.rect.x = plat[2]
-        platform.rect.y = plat[3]
-        platform_list.add(platform)
-        all_sprites_list.add(platform)
-
     # --- Create the player ---
     player = Player(50, 50)
-    player.level = platform_list
-    all_sprites_list.add(player)
+
+    # --- Create all the levels ---
+    level_list = []
+    level_list.append(Level_01(player))
+
+    # Set the current level
+    current_level_no = 0
+    current_level = level_list[current_level_no]
+
+    player.level = current_level
+    player.rect.x = 340
+    player.rect.y = SCREEN_HEIGHT - player.rect.height
+
+    active_sprite_list = pygame.sprite.Group()
+    active_sprite_list.add(player)
 
     clock = pygame.time.Clock()
 
@@ -64,10 +55,23 @@ def main():
                 if event.key == pygame.K_RIGHT and player.change_x > 0:
                     player.stop()
 
-        all_sprites_list.update()
+        active_sprite_list.update()
+        current_level.update()
 
-        screen.fill(BLACK)
-        all_sprites_list.draw(screen)
+        # --- Scrolling Logic ---
+        if player.rect.right >= 500:
+            diff = player.rect.right - 500
+            player.rect.right = 500
+            current_level.shift_world(-diff)
+
+        if player.rect.left <= 120:
+            diff = 120 - player.rect.left
+            player.rect.left = 120
+            current_level.shift_world(diff)
+
+        # --- Drawing Code ---
+        current_level.draw(screen)
+        active_sprite_list.draw(screen)
 
         pygame.display.flip()
         clock.tick(60)

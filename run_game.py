@@ -1,7 +1,7 @@
 import pygame
 import sys
-from game.player import Player
-from game.level import Level_01
+from lavacakes_pizza_fury.game.player import Player
+from lavacakes_pizza_fury.game.level import Level_01
 
 # --- Constants ---
 SCREEN_WIDTH = 800
@@ -31,6 +31,8 @@ def main():
 
     active_sprite_list = pygame.sprite.Group()
     active_sprite_list.add(player)
+    for enemy in current_level.enemy_list:
+        active_sprite_list.add(enemy)
 
     clock = pygame.time.Clock()
 
@@ -57,6 +59,17 @@ def main():
 
         active_sprite_list.update()
         current_level.update()
+
+        # --- Player-Enemy Collision ---
+        enemy_hit_list = pygame.sprite.spritecollide(player, current_level.enemy_list, False)
+
+        for enemy in enemy_hit_list:
+            if player.change_y > 0:
+                current_level.enemy_list.remove(enemy)
+                active_sprite_list.remove(enemy)
+            else:
+                player.rect.x = 340
+                player.rect.y = SCREEN_HEIGHT - player.rect.height
 
         # --- Scrolling Logic ---
         if player.rect.right >= 500:

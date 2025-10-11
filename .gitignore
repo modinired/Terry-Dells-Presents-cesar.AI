@@ -125,5 +125,9 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Pygame
+__pycache__/
+.pygame_sdl2_logs/
+
 # Server log
 server.log

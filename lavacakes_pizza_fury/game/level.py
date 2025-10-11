@@ -1,10 +1,9 @@
 import pygame
+from .enemy import Enemy
 
 class Platform(pygame.sprite.Sprite):
     """
     Represents a platform in the game world.
-    This class defines the solid surfaces that the player can stand on and
-    interact with.
     """
     def __init__(self, width, height, color=(0, 255, 0)):
         """
@@ -19,7 +18,6 @@ class Platform(pygame.sprite.Sprite):
 class Level():
     """
     This is a generic super-class used to define a level.
-    Create a child class for each level with level-specific info.
     """
     def __init__(self, player):
         """
@@ -57,16 +55,26 @@ class Level_01(Level):
         Level.__init__(self, player)
         self.level_limit = -1500
 
-        level = [ [2000, 70, 0, 580],   # Ground
-                  [210, 70, 500, 500],
-                  [210, 70, 800, 400],
-                  [210, 70, 1000, 500],
-                  [210, 70, 1120, 280],
-                ]
+        # --- Platforms ---
+        level_platforms = [ [2000, 70, 0, 580],   # Ground
+                            [210, 70, 500, 500],
+                            [210, 70, 800, 400],
+                            [210, 70, 1000, 500],
+                            [210, 70, 1120, 280],
+                          ]
 
-        for platform_data in level:
+        for platform_data in level_platforms:
             block = Platform(platform_data[0], platform_data[1])
             block.rect.x = platform_data[2]
             block.rect.y = platform_data[3]
-            block.player = self.player
             self.platform_list.add(block)
+
+        # --- Enemies ---
+        # Add a patrolling enemy
+        enemy = Enemy(30, 50)
+        enemy.rect.x = 800
+        enemy.rect.y = 350
+        enemy.boundary_left = 800
+        enemy.boundary_right = 800 + 180 # Patrol on the platform
+        enemy.level = self
+        self.enemy_list.add(enemy)

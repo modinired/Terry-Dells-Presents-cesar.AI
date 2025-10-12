@@ -12,8 +12,9 @@ The hero of our story. He should be overweight, wearing a slightly-too-small piz
     -   **Dimensions:** Each frame should be approximately 66 pixels wide by 90 pixels tall.
     -   **Animations:**
         -   **Idle:** A 2-4 frame animation of the pizza man standing, with his belly jiggling.
-        -   **Walk/Run:** A 4-8 frame animation of him being pulled forward by his belly.
+        -   **Being Pulled (Walk/Run):** A 4-8 frame animation of him being *dragged* forward by his belly, struggling to keep up.
         -   **Jump:** A 1-2 frame animation of him in the air.
+        -   **Belly Punch:** A 2-4 frame animation of his belly swinging forward like a wrecking ball.
         -   **Stomp:** A 1-frame image of him feet-first, ready to crush a hungry customer.
 
 ### Enemy: The Hungry Customer
@@ -51,6 +52,7 @@ These will be multi-layered to create a parallax scrolling effect, adding depth 
 
 -   `jump.wav`: A comical "boing" or "sproing" sound.
 -   `stomp.wav`: A satisfying, squishy "splat" sound.
+-   `punch.wav`: A "whoosh" followed by a solid "thump" sound.
 -   `death.wav`: A classic, video-gamey "lose a life" sound.
 
 ### Music (`assets/music/`)

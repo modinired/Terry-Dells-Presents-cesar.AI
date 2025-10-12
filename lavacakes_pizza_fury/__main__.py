@@ -35,6 +35,7 @@ def main():
     sound_manager = SoundManager()
     sound_manager.load_sound('jump', 'assets/sounds/jump.wav')
     sound_manager.load_sound('stomp', 'assets/sounds/stomp.wav')
+    sound_manager.load_sound('punch', 'assets/sounds/punch.wav')
     sound_manager.load_sound('death', 'assets/sounds/death.wav')
     sound_manager.load_music('assets/music/background.ogg')
     sound_manager.play_music()
@@ -53,8 +54,8 @@ def main():
     current_level = level_list[current_level_no]
 
     player.level = current_level
-    player.rect.x = 340
-    player.rect.y = SCREEN_HEIGHT - player.rect.height
+    player.pos.x = 340
+    player.pos.y = SCREEN_HEIGHT - 100
 
     active_sprite_list = pygame.sprite.Group()
     active_sprite_list.add(player)
@@ -71,47 +72,32 @@ def main():
 
             if event.type == pygame.KEYDOWN:
                 if not game_over:
-                    if event.key == pygame.K_LEFT:
-                        player.go_left()
-                    if event.key == pygame.K_RIGHT:
-                        player.go_right()
                     if event.key == pygame.K_SPACE:
                         player.jump()
                         sound_manager.play_sound('jump')
-
-            if event.type == pygame.KEYUP:
-                if not game_over:
-                    if event.key == pygame.K_LEFT and player.change_x < 0:
-                        player.stop()
-                    if event.key == pygame.K_RIGHT and player.change_x > 0:
-                        player.stop()
+                    if event.key == pygame.K_x:
+                        player.attack()
+                        sound_manager.play_sound('punch')
 
         if not game_over:
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_LEFT]: player.go_left()
+            elif keys[pygame.K_RIGHT]: player.go_right()
+            else: player.stop()
+
             active_sprite_list.update()
             current_level.update()
 
-            # --- Level Transition ---
-            if pygame.sprite.spritecollide(player, current_level.goal, False):
-                current_level_no += 1
-                if current_level_no < len(level_list):
-                    current_level = level_list[current_level_no]
-                    player.level = current_level
-                    player.rect.x = 340
-                    player.rect.y = SCREEN_HEIGHT - player.rect.height
+            # --- Belly Punch Collision ---
+            belly_hits = pygame.sprite.groupcollide(player.hitbox_group, current_level.enemy_list, True, True)
+            if belly_hits:
+                score += 150
+                sound_manager.play_sound('stomp')
 
-                    active_sprite_list.empty()
-                    active_sprite_list.add(player)
-                    for enemy in current_level.enemy_list:
-                        active_sprite_list.add(enemy)
-                else:
-                    # You win!
-                    game_over = True
-
-            # --- Player-Enemy Collision ---
+            # --- Stomp/Run-in Collision ---
             enemy_hit_list = pygame.sprite.spritecollide(player, current_level.enemy_list, False)
-
             for enemy in enemy_hit_list:
-                if player.change_y > 0:
+                if player.vel.y > 0 and player.rect.bottom < enemy.rect.bottom:
                     current_level.enemy_list.remove(enemy)
                     active_sprite_list.remove(enemy)
                     score += 100
@@ -119,29 +105,35 @@ def main():
                 else:
                     lives -= 1
                     sound_manager.play_sound('death')
-                    if lives <= 0:
-                        game_over = True
+                    if lives <= 0: game_over = True
                     else:
                         world_shift = current_level.world_shift
                         current_level.shift_world(-world_shift)
-                        player.rect.x = 340
-                        player.rect.y = SCREEN_HEIGHT - player.rect.height
-
+                        player.pos.x = 340
+                        player.pos.y = SCREEN_HEIGHT - 100
                         level_list[current_level_no] = type(current_level)(player)
                         current_level = level_list[current_level_no]
                         player.level = current_level
+                        active_sprite_list.empty(); active_sprite_list.add(player)
+                        for new_enemy in current_level.enemy_list: active_sprite_list.add(new_enemy)
 
-                        active_sprite_list.empty()
-                        active_sprite_list.add(player)
-                        for new_enemy in current_level.enemy_list:
-                            active_sprite_list.add(new_enemy)
+            # --- Level Transition ---
+            if pygame.sprite.spritecollide(player, current_level.goal, False):
+                current_level_no += 1
+                if current_level_no < len(level_list):
+                    current_level = level_list[current_level_no]
+                    player.level = current_level
+                    player.pos.x = 340; player.pos.y = SCREEN_HEIGHT - 100
+                    active_sprite_list.empty(); active_sprite_list.add(player)
+                    for enemy in current_level.enemy_list: active_sprite_list.add(enemy)
+                else:
+                    game_over = True
 
             # --- Scrolling Logic ---
             if player.rect.right >= 500:
                 diff = player.rect.right - 500
                 player.rect.right = 500
                 current_level.shift_world(-diff)
-
             if player.rect.left <= 120:
                 diff = 120 - player.rect.left
                 player.rect.left = 120

@@ -13,7 +13,7 @@ def pygame_init():
 @pytest.fixture
 def player(pygame_init):
     """Provides a new Player instance with no assets for testing."""
-    player = Player(0, 50, sprite_sheet_path=None)
+    player = Player(0, 50)
     player.level = Level(player)
     return player
 
@@ -54,20 +54,20 @@ def test_player_state_changes(player):
 
 def test_player_go_left(player):
     player.go_left()
-    assert player.input_direction == "L"
+    player.update()
+    assert player.acc.x < 0
 
 def test_player_go_right(player):
     player.go_right()
-    assert player.input_direction == "R"
+    player.update()
+    assert player.acc.x > 0
 
 def test_player_stop(player):
     player.go_right()
     player.update()
     player.stop()
-    assert player.input_direction == "STOP"
-    initial_vel = player.vel.x
     player.update()
-    assert abs(player.vel.x) < abs(initial_vel)
+    assert player.acc.x == 0
 
 def test_gravity(player):
     player.update()

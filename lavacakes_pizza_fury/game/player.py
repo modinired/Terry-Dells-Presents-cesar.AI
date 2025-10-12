@@ -16,9 +16,9 @@ class BellyHitbox(pygame.sprite.Sprite):
         if pygame.time.get_ticks() - self.creation_time > self.lifetime: self.kill()
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, x, y, sprite_sheet_path=None):
+    def __init__(self, x, y):
         super().__init__()
-        self._load_sprites(sprite_sheet_path)
+        self._create_placeholder_sprites()
         self.image = self.idle_frames_r[0]
         self.rect = self.image.get_rect(midbottom=(x, y))
         self.pos = pygame.math.Vector2(x, y)
@@ -29,24 +29,30 @@ class Player(pygame.sprite.Sprite):
         self.on_ground = False
         self.frame = 0; self.last_update = pygame.time.get_ticks(); self.frame_rate = 100
         self.direction = "R"; self.state = "idle"
-        self.input_direction = "STOP"
 
-    def _load_sprites(self, sprite_sheet_path):
-        self.walking_frames_l, self.walking_frames_r, self.idle_frames_l, self.idle_frames_r = [], [], [], []
-        sprite_sheet = SpriteSheet(sprite_sheet_path)
-        if not self.walking_frames_r: self.walking_frames_r.append(pygame.Surface([40,60])); self.walking_frames_r[0].fill((0,0,255))
-        if not self.walking_frames_l: self.walking_frames_l.append(pygame.Surface([40,60])); self.walking_frames_l[0].fill((0,0,255))
-        if not self.idle_frames_r: self.idle_frames_r.append(self.walking_frames_r[0])
-        if not self.idle_frames_l: self.idle_frames_l.append(self.walking_frames_l[0])
-        self.jump_frame_r = self.walking_frames_r[0]
-        self.jump_frame_l = self.walking_frames_l[0]
+    def _create_placeholder_sprites(self):
+        """ Creates simple, colored sprites for the player. """
+        self.walking_frames_l, self.walking_frames_r = [], []
+        self.idle_frames_l, self.idle_frames_r = [], []
+
+        frame_1 = pygame.Surface([40, 60]); frame_1.fill((0, 0, 255))
+        frame_2 = pygame.Surface([40, 60]); frame_2.fill((0, 100, 255))
+        self.walking_frames_r.extend([frame_1, frame_2])
+
+        idle_frame = pygame.Surface([40, 60]); idle_frame.fill((0, 0, 200))
+        self.idle_frames_r.append(idle_frame)
+
+        self.jump_frame_r = pygame.Surface([40, 60]); self.jump_frame_r.fill((0, 150, 255))
+
+        for frame in self.walking_frames_r: self.walking_frames_l.append(pygame.transform.flip(frame, True, False))
+        for frame in self.idle_frames_r: self.idle_frames_l.append(pygame.transform.flip(frame, True, False))
+        self.jump_frame_l = pygame.transform.flip(self.jump_frame_r, True, False)
 
     def update(self):
-        # --- Physics ---
-        self.acc = pygame.math.Vector2(0, GRAVITY) # Gravity is always applied
-        if self.input_direction == "L": self.acc.x = -ACCELERATION
-        if self.input_direction == "R": self.acc.x = ACCELERATION
+        """ Update player state based on physics and input. """
+        self.acc = pygame.math.Vector2(0, GRAVITY)
 
+        # --- Horizontal Movement ---
         self.acc.x += self.vel.x * FRICTION
         self.vel.x += self.acc.x
         if abs(self.vel.x) < 0.1: self.vel.x = 0
@@ -55,11 +61,13 @@ class Player(pygame.sprite.Sprite):
         self.rect.centerx = round(self.pos.x)
         self._check_collisions('horizontal')
 
+        # --- Vertical Movement ---
         self.vel.y += self.acc.y
-        self.pos.y += self.vel.y + 0.5 * self.vel.y
+        self.pos.y += self.vel.y
         self.rect.bottom = round(self.pos.y)
         self._check_collisions('vertical')
 
+        # --- Final Updates ---
         self.hitbox_group.update()
         self._set_state()
         self._animate()
@@ -110,12 +118,12 @@ class Player(pygame.sprite.Sprite):
         self.hitbox_group.add(BellyHitbox(center))
 
     def go_left(self):
-        self.input_direction = "L"
+        self.acc.x = -ACCELERATION
         self.direction = "L"
 
     def go_right(self):
-        self.input_direction = "R"
+        self.acc.x = ACCELERATION
         self.direction = "R"
 
     def stop(self):
-        self.input_direction = "STOP"
+        self.acc.x = 0
